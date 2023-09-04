@@ -27,15 +27,10 @@ library("readxl")
 ```
 
 ```{r}
-#panggil dari github (belum berhasil)
-data1 <- import("https://github.com/Tuyye/mpdw/blob/main/data%20tugas/Suhu%20Zamboanga.csv")
-data1
-View(data1)
-```
-
-```{r}
-dataxl1 <- read.csv("C:/IPB/MPDW/mpdw/data tugas/Suhu Zamboanga.csv")
+#panggil dari github 
+dataxl1 <- import("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/Data%20Tugas%201/Suhu%20Zamboanga.csv")
 dataxl1
+View(dataxl1)
 ```
 
 ```{r}
@@ -82,19 +77,6 @@ Eksplorasi data dilakukan pada keseluruhan data, data latih serta data uji mengg
 plot(dataxl1.ts, col="red",main="suhu")
 points(dataxl1.ts)
 
-```
-
-```{r}
-#Eksplorasi dengan GGPLOT
-library(ggplot2)
-ggplot() + 
-  geom_line(data = training_ma, aes(x = Period, y = Sales, col = "Data Latih")) +
-  geom_line(data = testing_ma, aes(x = Period, y = Sales, col = "Data Uji")) +
-  labs(x = "Periode Waktu", y = "Sales", color = "Legend") +
-  scale_colour_manual(name="Keterangan:", breaks = c("Data Latih", "Data Uji"),
-                      values = c("blue", "red")) + 
-  theme_bw() + theme(legend.position = "bottom",
-                     plot.caption = element_text(hjust=0.5, size=12))
 ```
 
 ```{r}
