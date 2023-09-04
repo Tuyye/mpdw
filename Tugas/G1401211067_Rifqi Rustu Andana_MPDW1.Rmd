@@ -1,0 +1,156 @@
+---
+title: "Pertemuan 1 - Pemulusan"
+author:
+- "Rifqi Rustu Andana - G1401211067"
+output:
+  html_document: default
+---
+
+## Library / Packages
+
+```{r}
+install.packages("forecast")
+install.packages("graphics")
+install.packages("TTR")
+install.packages("TSA")
+install.packages("rio")
+install.packages("readxl")
+```
+
+```{r}
+library("forecast")
+library("graphics")
+library("TTR")
+library("TSA")
+library("rio")
+library("readxl")
+```
+
+```{r}
+#panggil dari github
+data1 <- import("https://github.com/Tuyye/mpdw/blob/main/data%20tugas/Suhu%20Zamboanga.csv")
+data1
+View(data1)
+```
+
+```{r}
+#readexcel
+dataxl1 <- read_excel("C:/IPB/MPDW/mpdw/data tugas/Suhu Zamboanga.xlsx")
+dataxl1 <- read.csv("C:/IPB/MPDW/mpdw/data tugas/Suhu Zamboanga.csv")
+dataxl1
+```
+
+```{r}
+View(dataxl1)
+str(dataxl1)
+dim(dataxl1)
+```
+
+```{r}
+dataxl1.ts <- ts(dataxl1$Suhu)
+summary(dataxl1.ts)
+```
+
+```{r}
+ts.plot(dataxl1.ts, xlab="Time Period ", ylab="Reading", 
+        main = "Time Series Plot")
+points(dataxl1.ts)
+```
+
+Menyimpan plot
+
+```{r}
+#menyimpan plot
+#dev.copy(png, "eksplorasi.png")
+#dev.off()
+```
+
+```{r}
+#membagi data latih dan data uji
+training_ma <- dataxl1[1:96,]
+testing_ma <- dataxl1[97:144,]
+train_ma.ts <- ts(training_ma$Suhu)
+test_ma.ts <- ts(testing_ma$Suhu)
+```
+
+## Single Moving Average & Double Moving Average
+
+### Eksplorasi Data
+
+Eksplorasi data dilakukan pada keseluruhan data, data latih serta data uji menggunakan plot data deret waktu.
+
+```{r}
+#eksplorasi keseluruhan data
+plot(dataxl1.ts, col="red",main="suhu")
+points(dataxl1.ts)
+
+```
+
+```{r}
+#Eksplorasi dengan GGPLOT
+library(ggplot2)
+ggplot() + 
+  geom_line(data = training_ma, aes(x = Period, y = Sales, col = "Data Latih")) +
+  geom_line(data = testing_ma, aes(x = Period, y = Sales, col = "Data Uji")) +
+  labs(x = "Periode Waktu", y = "Sales", color = "Legend") +
+  scale_colour_manual(name="Keterangan:", breaks = c("Data Latih", "Data Uji"),
+                      values = c("blue", "red")) + 
+  theme_bw() + theme(legend.position = "bottom",
+                     plot.caption = element_text(hjust=0.5, size=12))
+```
+
+```{r}
+data.sma<-SMA(dataxl1.ts, n=4)
+data.sma
+```
+
+```{r}
+data.ramal<-c(NA,data.sma)
+data.ramal #forecast 1 periode ke depan
+```
+
+```{r}
+data.gab<-cbind(aktual=c(dataxl1.ts,rep(NA,24)),pemulusan=c(data.sma,rep(NA,24)),ramalan=c(data.ramal,rep(data.ramal[length(data.ramal)],23)))
+data.gab #forecast 24 periode ke depan
+```
+
+```{r}
+ts.plot(dataxl1.ts, xlab="Time Period ", ylab="Suhu", main= "SMA N=4 Suhu Zamboaga")
+points(dataxl1.ts)
+lines(data.gab[,2],col="green",lwd=2)
+lines(data.gab[,3],col="red",lwd=2)
+legend("topleft",c("data aktual","data pemulusan","data peramalan"), lty=8, col=c("black","green","red"), cex=0.5)
+```
+```{r}
+class(train_ma.ts)
+as.numeric(train_ma.ts)
+```
+
+
+```{r}
+#Menghitung nilai keakuratan data latih
+error_train.sma = train_ma.ts-data.ramal[1:length(train_ma.ts)]
+SSE_train.sma = sum(error_train.sma[5:length(train_ma.ts)]^2)
+MSE_train.sma = mean(error_train.sma[5:length(train_ma.ts)]^2)
+MAPE_train.sma = mean(abs((error_train.sma[5:length(train_ma.ts)]/train_ma.ts[5:length(train_ma.ts)])*100))
+
+akurasi_train.sma <- matrix(c(SSE_train.sma, MSE_train.sma, MAPE_train.sma))
+row.names(akurasi_train.sma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi_train.sma) <- c("Akurasi m = 4")
+akurasi_train.sma
+```
+
+```{r}
+#Menghitung nilai keakuratan data uji
+error_test.sma = test_ma.ts-data.gab[97:120,3]
+SSE_test.sma = sum(error_test.sma^2)
+MSE_test.sma = mean(error_test.sma^2)
+MAPE_test.sma = mean(abs((error_test.sma/test_ma.ts*100)))
+
+akurasi_test.sma <- matrix(c(SSE_test.sma, MSE_test.sma, MAPE_test.sma))
+row.names(akurasi_test.sma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi_test.sma) <- c("Akurasi m = 4")
+akurasi_test.sma
+```
+
+
