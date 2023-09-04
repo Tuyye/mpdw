@@ -27,15 +27,13 @@ library("readxl")
 ```
 
 ```{r}
-#panggil dari github
+#panggil dari github (belum berhasil)
 data1 <- import("https://github.com/Tuyye/mpdw/blob/main/data%20tugas/Suhu%20Zamboanga.csv")
 data1
 View(data1)
 ```
 
 ```{r}
-#readexcel
-dataxl1 <- read_excel("C:/IPB/MPDW/mpdw/data tugas/Suhu Zamboanga.xlsx")
 dataxl1 <- read.csv("C:/IPB/MPDW/mpdw/data tugas/Suhu Zamboanga.csv")
 dataxl1
 ```
