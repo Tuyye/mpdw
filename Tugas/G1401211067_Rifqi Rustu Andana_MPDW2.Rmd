@@ -1,0 +1,283 @@
+---
+title: "G1401211067_Rifqi Rustu Andana_MPDW2"
+author: "Rifqi Rustu Andana"
+date: "2023-09-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##instalasi package
+```{r}
+install.packages("forecast")
+install.packages("TTR")
+install.packages("TSA")
+install.packages("orcutt")
+install.packages("HoRM")
+```
+##library
+```{r}
+library(TTR)
+library(forecast)
+library(lmtest) 
+library(orcutt) 
+library(HoRM) 
+```
+
+## Data yang digunakan adalah total emisi CO2 di negara Indonesia tahun 1889 - 2014 sebanyak 126 observasi
+```{r}
+df <- read.csv("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/DataTugas2/Data%20CO2%20Indonesia.csv")
+df
+```
+
+## Eksplorasi data
+
+## didapatkan plot time series dari data tahun 1889 - 2014 dengan pola tidak beraturan, yang kemudian ada pola tren naik
+```{r}
+data.ts <- ts(df$Total)
+
+ts.plot(data.ts, xlab="Time Period ", ylab="Total CO2 Emissions", main= "Time Series Plot of CO2 Emissions")
+points(data.ts)
+```
+## Melakukan splitting data latih dan uji
+```{r}
+n = length(data.ts)
+propTrain = 0.7
+trainNum = 96
+training <- df[1:trainNum,]
+testing <- df[(trainNum+1):n,]
+training_ts <- ts(training$Total)
+testing_ts <- ts(testing$Total)
+```
+
+## fungsi kalkulasi nilai SSE, MSE, dan MAPE
+```{r}
+akurasiFunc <- function(actual, predictions){
+  error <- actual - predictions
+  SSE <- sum(error^2)
+  MSE <- mean(error^2)
+  MAPE <- mean(abs(error)*100/actual)
+  
+  akurasi <- matrix(c(SSE, MSE, MAPE))
+  row.names(akurasi) <- c("SSE", "MSE", "MAPE")
+  colnames(akurasi) <- c("Akurasi")
+  return(akurasi)
+}
+```
+
+## Menggunakan Double Moving Average karena ada trend naik
+```{r}
+data.sma <- SMA(training_ts,n=4)
+dma <- SMA(data.sma, n = 4)
+At <- 2*data.sma - dma
+Bt <- 2/(4-1)*(data.sma - dma)
+data.dma<- At+Bt
+data.ramal2<- c(NA, data.dma)
+
+num <- n-trainNum
+t = 1:(num)
+f = c()
+
+for (i in t) {
+  f[i] = At[length(At)] + Bt[length(Bt)]*(i)
+}
+
+data.gab2 <- cbind(aktual = c(training_ts,rep(NA,num)), pemulusan1 = c(data.sma,rep(NA,num)),pemulusan2 = c(data.dma, rep(NA,num)),At = c(At, rep(NA,num)), Bt = c(Bt,rep(NA,num)),ramalan = c(data.ramal2, f[-1]))
+data.gab2
+```
+
+## plot pada DMA menunjukkan bahwa DMA baik saat memprediksi data latih sedangkan buruk dalam memprediksi data uji dengan hasil prediksi yang masih jauh dengan nilai aktual
+```{r}
+data_ts = ts(df$Total)
+ts.plot(data_ts, xlab="Time Period ", ylab="CO2 Emissions", main= "DMA N=4 Data CO2 Emissions")
+points(data_ts)
+lines(data.gab2[,3],col="green",lwd=2)
+lines(data.gab2[,6],col="red",lwd=2)
+legend("topleft",c("data aktual","data pemulusan","data peramalan"), lty=8, col=c("black","green","red"), cex=0.8)
+```
+
+
+## SSE, MSE. dan MAPE pada data latih dengan DMA
+## didapatkan nilai MAPE  sekitar 12 %
+```{r}
+akurasiFunc(data.gab2[,1][8:num],data.gab2[,6][8:num])
+```
+
+## SSE, MSE. dan MAPE pada data uji dengan DMA
+## nilai MAPE pada data UJI 36 % 
+```{r}
+akurasiFunc(testing_ts[1:(num)], data.gab2[,6][(trainNum+1):n])
+```
+
+## Pemodelan Double Exponential Smoothing
+## didapatkan nilai optimum dari beta sekitar 0,098 dan nilai optimum alpha adalah 1
+```{r}
+des.opt <- HoltWinters(training_ts, gamma = FALSE, beta = NULL, alpha = NULL)
+print(paste(des.opt$beta,des.opt$alpha))
+plot(des.opt)
+```
+
+
+## Melakukan peramalan
+```{r}
+ramalan_des_opt <- forecast(des.opt,h = num)
+des.opt$fitted[,1]
+```
+
+## SSE, MSE. dan MAPE pada data latih dengan DES
+## didapatkan nilai MAPE sebesar 18 % pada data latih
+```{r}
+akurasiFunc(training_ts[3:trainNum],des.opt$fitted[,1])
+```
+
+## SSE, MSE. dan MAPE pada data latih dengan DES
+## didapatkan nilai MAPE sebesar 31 % pada data uji 
+```{r}
+akurasiFunc(testing_ts[1:num],ramalan_des_opt$mean)
+```
+
+## Berdasarkan perbandingan akurasi data uji tersebut, terlihat nilai SSE, MSE, dan MAPE metode DES lebih kecil dibandingkan dengan metode DMA. Oleh karena itu, metode peramalan dan pemulusan yang terbaik antara keduanya adalah dengan metode DES.
+
+## Setelah melakukan peramalan, data yang telah dimasukkan kemudian dieksplorasi. Eksplorasi pertama yang dilakukan adalah dengan menggunakan *scatter plot*.
+
+## didapatkan pola hubungan yang membentuk persamaan y = akar dari x sehingga akan dilakukan transformasi supaya peubahnya lebih linier
+
+```{r}
+#Eksplorasi Data
+#Pembuatan Scatter Plot
+plot(df$Solid.Fuel,df$Total, pch = 20, col = "blue",
+     main = "Scatter Plot Solid.Fuel vs Nilai Total CO2 Emissions",
+     xlab = "Tahun",
+     ylab = "Nilai Total CO2 Emissions")
+```
+
+## plot yang dihasilkan menjadi lebih linier dan korelasi antar kedua peubah tersebut cukup besar dan positif yaitu sekitar 0,96
+```{r}
+#Eksplorasi Data
+#Pembuatan Scatter Plot
+plot(sqrt(df$Solid.Fuel),df$Total, pch = 20, col = "blue",
+     main = "Scatter Plot akar Solid.Fuel vs Nilai Total CO2 Emissions",
+     xlab = "Tahun",
+     ylab = "Nilai Total CO2 Emissions")
+#Menampilkan Nilai Korelasi
+cor(df$Total,sqrt(df$Solid.Fuel))
+```
+Setalah mengetahui adanya hubungan antar dua peubah, maka model regresi dapat ditentukan.
+
+## Regresi
+
+
+## Persamaan regresi yang dihasilkan adalah Total = 278,3 * sqrt(Solid.Fuel) - 10,84 * Year + 1.36 * Liquid.Fuel + 1559 dan memiliki nilai R-squared yang baik yaitu sekitar 99 % dan nilai fhitung yang besar. Akan tetapi ada 1 peubah yang tidak signifikan yaitu peubah tahun.
+```{r}
+#Pembuatan Model Regresi
+#model regresi linear berganda
+model<- lm(df$Total~sqrt(df$Solid.Fuel)+df$Year+df$Liquid.Fuel)
+summary(model)
+```
+
+```{r}
+#sisaan dan fitted value
+sisaan<- residuals(model)
+fitValue<- predict(model)
+
+#Diagnostik dengan eksploratif
+par(mfrow = c(2,2))
+qqnorm(sisaan)
+qqline(sisaan, col = "steelblue", lwd = 2)
+plot(fitValue, sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
+abline(a = 0, b = 0, lwd = 2)
+hist(sisaan, col = "steelblue")
+plot(seq(1,length(sisaan),1), sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
+lines(seq(1,length(sisaan),1), sisaan, col = "red")
+abline(a = 0, b = 0, lwd = 2)
+```
+
+## sisaan menyebar normal menurut kolmogorov-smirnov dengan alfa 5%
+
+```{r}
+#Melihat Sisaan Menyebar Normal/Tidak
+#H0: sisaan mengikuti sebaran normal
+#H1: sisaan tidak mengikuti sebaran normal
+ks.test(sisaan, "pnorm", mean=mean(sisaan), sd=sd(sisaan))
+```
+## pada plot pacf, lag ke 2 signifikan sehingga ada indikasi autokorelasi
+```{r}
+#ACF dan PACF identifikasi autokorelasi
+par(mfrow = c(1,2))
+acf(sisaan)
+pacf(sisaan)
+```
+
+## p-value durbin watson bernilai sangat kecil sehingga cukup bukti untuk mengatakan ada autokorelasi dalam sisaan
+```{r}
+#Deteksi autokorelasi dengan uji-Durbin Watson
+#H0: tidak ada autokorelasi
+#H1: ada autokorelasi
+dwtest(model)
+```
+
+```{r}
+#Penanganan Autokorelasi Hildreth lu
+# Hildreth-Lu
+hildreth.lu.func<- function(r, model){
+  x <- model.matrix(model)[,-1]
+  y <- model.response(model.frame(model))
+  n <- length(y)
+  t <- 2:n
+  y <- y[t]-r*y[t-1]
+  x <- x[t]-r*x[t-1]
+  
+  return(lm(y~x))
+}
+```
+
+```{r}
+#Pencariab rho yang meminimumkan SSE
+r <- c(seq(0.1,0.9, by= 0.1))
+tab <- data.frame("rho" = r, "SSE" = sapply(r, function(i){deviance(hildreth.lu.func(i, model))}))
+round(tab, 4)
+tab
+```
+
+## didapatkan nilai rho optimum adalah 1,012
+
+```{r}
+#Rho optimal di 1.012
+rOpt <- seq(1,1.1, by= 0.001)
+tabOpt <- data.frame("rho" = rOpt, "SSE" = sapply(rOpt, function(i){deviance(hildreth.lu.func(i, model))}))
+head(tabOpt[order(tabOpt$SSE),])
+```
+
+```{r}
+#Model terbaik
+modelHL <- hildreth.lu.func(1.012, model)
+summary(modelHL)
+
+#Transformasi Balik
+cat("y = ", coef(modelHL)[1]/(1-1.012), "+", coef(modelHL)[2],"x", sep = "")
+```
+
+## didapatkan p-value durbin watson 26 % > 5 % sehingga tidak ada indikasi autokorelasi setelah di transformasi menggunakan hildreth-lu
+
+```{r}
+#Deteksi autokorelasi
+dwtest(modelHL)
+```
+
+## berdasarkan nilai MSE dan SSE, model hildreth-lu memiliki nilai MSE dan SSE yang lebih kecil dengan model regresi biasa ketika autokorelasi masih terjadi
+
+```{r}
+#Perbandingan
+sseModelawal <- anova(model)$`Sum Sq`[-1]
+sseModelHL <- anova(modelHL)$`Sum Sq`[-1]
+mseModelawal <- sseModelawal/length(df$Total)
+mseModelHL <- sseModelHL/length(df$Total)
+akurasi <- matrix(c(sseModelawal,sseModelHL,
+                    mseModelawal,mseModelHL),nrow=2,ncol=2,byrow = T)
+colnames(akurasi) <- c("Model Awal", "Model Hildreth-Lu")
+row.names(akurasi) <- c("SSE","MSE")
+akurasi
+```
+
