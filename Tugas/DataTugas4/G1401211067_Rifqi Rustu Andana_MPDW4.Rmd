@@ -1,0 +1,506 @@
+---
+title: "G1401211067_Rifqi Rustu Andana_MPDW4"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-09-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Nomor 1
+
+### Manual
+```{r}
+set.seed(067)
+wn <- rnorm(300)
+ts.plot(wn)
+```
+
+```{r}
+par(mfrow = c(1, 2)) 
+acf(wn)
+acf(wn, xlim = c(1, 20))
+```
+
+## Proses MA
+```{r}
+ma[1] <- wn[1]
+ma[2] <- wn[2]
+```
+
+```{r}
+for(i in 3:300){
+   ma[i] <- wn[i] + 0.4 * wn[i - 1] + 0.6 * wn[i - 2] 
+}
+ma
+```
+
+## Plot
+
+# Plot Time Series
+```{r}
+ts.plot(ma)
+```
+
+# Plot ACF
+```{r}
+acf(ma,lag.max = 20)
+```
+
+# Plot PACF
+```{r}
+pacf(ma)
+```
+
+# Plot EACF
+```{r}
+TSA::eacf(ma)
+```
+
+### Scatterplot Antar Lag
+
+# Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+#Yt
+yt_ma <- ma[-1]
+yt_ma
+#Yt-1
+yt_1_ma <- ma[-300]
+yt_1_ma
+```
+
+```{r}
+plot(y=yt_ma,x=yt_1_ma)
+```
+
+```{r}
+cor(yt_ma,yt_1_ma)
+```
+
+# Korelasi antara $Y_t$ dengan $Y_{t-2}$
+
+```{r}
+#Yt
+yt_ma2 <- ma[-c(1,2)]
+yt_ma2
+#Yt-2
+yt_2_ma <- ma[-c(299,300)]
+yt_2_ma
+```
+```{r}
+plot(y=yt_ma2,x=yt_2_ma)
+```
+```{r}
+cor(yt_ma2,yt_2_ma)
+```
+```{r}
+#Yt
+yt_ma3 <- ma[-c(1,2,3)]
+yt_ma3
+#Yt-3
+yt_3_ma <- ma[-c(298,299,300)]
+yt_3_ma
+```
+```{r}
+plot(y=yt_ma3,x=yt_3_ma)
+```
+```{r}
+cor(yt_ma3,yt_3_ma)
+```
+
+### Dengan arima.sim
+
+```{r}
+ma2 <- arima.sim(list(order=c(0,0,2), ma=c(0.4,0.6)), n=300)
+ma2
+```
+## Plot (arima.sim)
+
+# Plot Time Series
+```{r}
+ts.plot(ma2)
+```
+
+# Plot ACF
+```{r}
+acf(ma2,lag.max = 20)
+```
+
+# Plot PACF
+```{r}
+pacf(ma2)
+```
+
+# Plot EACF
+```{r}
+TSA::eacf(ma2)
+```
+
+### Scatterplot Antar Lag
+
+# Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+#Yt
+yt_ma <- ma2[-1]
+yt_ma
+#Yt-1
+yt_1_ma <- ma2[-300]
+yt_1_ma
+```
+
+```{r}
+plot(y=yt_ma,x=yt_1_ma)
+```
+
+```{r}
+cor(yt_ma,yt_1_ma)
+```
+
+# Korelasi antara $Y_t$ dengan $Y_{t-2}$
+
+```{r}
+#Yt
+yt_ma2 <- ma2[-c(1,2)]
+yt_ma2
+#Yt-2
+yt_2_ma <- ma2[-c(299,300)]
+yt_2_ma
+```
+```{r}
+plot(y=yt_ma2,x=yt_2_ma)
+```
+```{r}
+cor(yt_ma2,yt_2_ma)
+```
+
+```{r}
+#Yt
+yt_ma3 <- ma2[-c(1,2,3)]
+yt_ma3
+#Yt-3
+yt_3_ma <- ma2[-c(298,299,300)]
+yt_3_ma
+```
+
+```{r}
+plot(y=yt_ma3,x=yt_3_ma)
+```
+
+```{r}
+cor(yt_ma3,yt_3_ma)
+```
+
+#### Nomer 2
+
+## Proses AR
+```{r}
+set.seed(067)
+```
+
+```{r}
+n<-length(wn)
+n
+ar <- c(1:n) 
+for (i in 3:n) {ar[i]<-wn[i] + 0.5*ar[i-1] + 0.2*ar[i-2]}
+ar
+```
+
+Selain menggunakan cara di atas, pembangkitan proses AR dapat dilakukan dengan fungsi `arima.sim()` sebagai berikut.
+
+```{r}
+ar1 <- arima.sim(list(order=c(2,0,0), ar= c(0.5,0.2)), n=300)
+ar1
+```
+
+## Karakteristik AR(2)
+### Plot Time Series
+
+```{r}
+ts.plot(ar)
+```
+
+### Plot ACF
+```{r}
+acf(ar)
+```
+
+### Plot PACF
+
+```{r}
+pacf(ar)
+```
+
+### Plot EACF
+
+```{r}
+TSA::eacf(ar)
+```
+
+### Scatterplot Antar Lag
+#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+#Yt
+yt_ar <- ar[-1]
+yt_ar
+#Yt-1
+yt_1_ar <- ar[-300]
+yt_1_ar
+```
+
+```{r}
+plot(y=yt_ar,x=yt_1_ar)
+```
+```{r}
+cor(yt_ar,yt_1_ar)
+```
+
+#### Korelasi antara $Y_t$ dengan $Y_{t-2}$
+
+```{r}
+#Yt
+yt_ar2 <- ar[-c(1,2)]
+yt_ar2
+#Yt-2
+yt_2_ar <- ar[-c(299,300)]
+yt_2_ar
+```
+
+```{r}
+plot(y=yt_ar2,x=yt_2_ar)
+```
+
+```{r}
+cor(yt_ar2,yt_2_ar)
+```
+#### Korelasi antara $Y_t$ dengan $Y_{t-3}$
+
+```{r}
+#Yt
+yt_ar3 <- ar[-c(1,2,3)]
+yt_ar3
+#Yt-3
+yt_3_ar <- ar[-c(298,299,300)]
+yt_3_ar
+```
+
+```{r}
+plot(y=yt_ar3,x=yt_3_ar)
+```
+
+```{r}
+cor(yt_ar3,yt_3_ar)
+```
+
+## AR (arima.sim)
+```{r}
+set.seed(067)
+```
+
+```{r}
+ar1 <- arima.sim(list(order=c(2,0,0), ar= c(0.5,0.2)), n=300)
+ar1
+```
+
+### Plot
+## Plot Time Series
+
+```{r}
+ts.plot(ar1)
+```
+
+## Plot ACF
+```{r}
+acf(ar1)
+```
+
+## Plot PACF
+
+```{r}
+pacf(ar1)
+```
+
+## Plot EACF
+
+```{r}
+TSA::eacf(ar1)
+```
+
+### Scatterplot Antar Lag
+## Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+#Yt
+yt_ar <- ar1[-1]
+yt_ar
+#Yt-1
+yt_1_ar <- ar1[-300]
+yt_1_ar
+```
+
+```{r}
+plot(y=yt_ar,x=yt_1_ar)
+```
+```{r}
+cor(yt_ar,yt_1_ar)
+```
+
+## Korelasi antara $Y_t$ dengan $Y_{t-2}$
+
+```{r}
+#Yt
+yt_ar2 <- ar1[-c(1,2)]
+yt_ar2
+#Yt-2
+yt_2_ar <- ar1[-c(299,300)]
+yt_2_ar
+```
+
+```{r}
+plot(y=yt_ar2,x=yt_2_ar)
+```
+
+```{r}
+cor(yt_ar2,yt_2_ar)
+```
+## Korelasi antara $Y_t$ dengan $Y_{t-3}$
+
+```{r}
+#Yt
+yt_ar3 <- ar1[-c(1,2,3)]
+yt_ar3
+#Yt-3
+yt_3_ar <- ar1[-c(298,299,300)]
+yt_3_ar
+```
+
+```{r}
+plot(y=yt_ar3,x=yt_3_ar)
+```
+
+```{r}
+cor(yt_ar3,yt_3_ar)
+```
+
+### Nomer 3
+## Fungsi pembangkitan ARMA
+
+```{r}
+set.seed(067)
+n = length(wn)
+
+y.arma=c(1:n)
+for (i in 3:n){y.arma[i] = 0.5*y.arma[i-1] + 0.2*y.arma[i-2] + 0.4*wn[i-1] +   0.6*wn[i-2]+wn[i]}
+y.arma
+```
+
+Pembangkitan ARMA(p,q) juga dapat dilakukan dengan fungsi `arima.sim` sebagai berikut.
+
+```{r}
+arma11 <- arima.sim(list(order=c(2,0,2), ar = c(0.5,0.2), ma =c(0.4,0.6)), n=300)
+arma11
+```
+
+## Karakteristik ARMA(1,1)
+
+### Plot Time Series
+
+```{r}
+par(mfrow = c(1, 2))
+ts.plot(y.arma)
+ts.plot(arma11)
+par(mfrow = c(1, 1))
+```
+
+### Plot ACF
+
+```{r}
+par(mfrow = c(1, 2))
+acf(y.arma)
+acf(arma11)
+par(mfrow = c(1, 1))
+```
+
+### Plot PACF
+
+```{r}
+par(mfrow = c(1, 2))
+pacf(y.arma)
+pacf(arma11)
+par(mfrow = c(1, 1))
+```
+
+### Plot EACF
+
+```{r}
+TSA::eacf(y.arma)
+TSA::eacf(arma11)
+```
+
+
+### Scatterplot Antar Lag
+
+#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
+
+```{r}
+#Yt
+yt_arma <- arma11[-1]
+yt_arma
+#Yt-1
+yt_1_arma <- arma11[-300]
+yt_1_arma
+```
+
+```{r}
+plot(y=yt_arma,x=yt_1_arma)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. Hal ini sesuai dengan teori yang ada
+
+
+```{r}
+cor(yt_arma,yt_1_arma)
+```
+#### Korelasi antara $Y_t$ dengan $Y_{t-2}$
+```{r}
+#Yt
+yt_arma2 <- arma11[-c(1,2)]
+yt_arma2
+#Yt-2
+yt_2_arma <- arma11[-c(299,300)]
+yt_2_arma
+```
+
+```{r}
+plot(y=yt_arma2,x=yt_2_arma)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. Hal ini sesuai dengan teori yang ada
+
+```{r}
+cor(yt_arma2,yt_2_arma)
+```
+#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
+```{r}
+#Yt
+yt_arma3 <- arma11[-c(1,2,3)]
+yt_arma3
+#Yt-3
+yt_3_arma <- arma11[-c(298,299,300)]
+yt_3_arma
+```
+
+```{r}
+plot(y=yt_arma3,x=yt_3_arma)
+```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. Hal ini sesuai dengan teori yang ada
+
+```{r}
+cor(yt_arma3,yt_3_arma)
+```
