@@ -1,0 +1,258 @@
+---
+title: "G1401211067_Rifqi Rustu Andana_MPDW3"
+author:
+- Rifqi Rustu Andana
+output:
+  html_document:
+    theme: yeti
+    toc: true
+    toc_float: true
+  word_document: default
+  pdf_document: default
+---
+
+## *Packages*
+
+```{r, echo=FALSE}
+#PACKAGES
+install.packages("dLagM") 
+install.packages("dynlm") 
+install.packages("MLmetrics") 
+library(dLagM)
+library(dynlm)
+library(MLmetrics)
+library(lmtest)
+library(car)
+```
+
+## Impor Data
+
+```{r}
+data <- rio::import("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/DataTugas3/Data%20CO2%20Indonesiaa.csv")
+str(data)
+data
+```
+
+## Pembagian Data
+
+```{r}
+#SPLIT DATA
+train<-data[1:101,]
+test<-data[102:126,]
+```
+
+```{r}
+#data time series
+train.ts<-ts(train)
+test.ts<-ts(test)
+data.ts<-ts(data)
+```
+
+### Pemodelan
+
+```{r}
+#MODEL KOYCK
+model.koyck <- koyckDlm(x = train$SolidFuel, y = train$Total)
+summary(model.koyck)
+AIC(model.koyck)
+BIC(model.koyck)
+```
+Dari hasil tersebut, didapat bahwa peubah x(SolidFuel) memiliki nilai $P-Value>0.05$. Hal ini menunjukkan bahwa peubah x berpengaruh signifikan terhadap $y$. 
+
+### Peramalan dan Akurasi
+
+Berikut adalah hasil peramalan y untuk 25 periode kedepan menggunakan model koyck
+
+```{r}
+fore.koyck <- forecast(model = model.koyck, x=test$SolidFuel, h=25)
+fore.koyck
+mape.koyck <- MAPE(fore.koyck$forecasts, test$Total)
+#akurasi data training
+GoF(model.koyck)
+```
+
+## Regression with Distributed Lag
+
+
+```{r}
+model.dlm <- dlm(x = train$SolidFuel,y = train$Total , q = 2)
+summary(model.dlm)
+AIC(model.dlm)
+BIC(model.dlm)
+```
+
+### Peramalan dan Akurasi
+
+```{r}
+fore.dlm <- forecast(model = model.dlm, x=test$SolidFuel, h=25)
+fore.dlm
+mape.dlm <- MAPE(fore.dlm$forecasts, test$Total)
+#akurasi data training
+GoF(model.dlm)
+```
+
+### *Lag* Optimum
+
+```{r}
+#penentuan lag optimum 
+finiteDLMauto(formula = Total ~ SolidFuel,
+              data = data.frame(train), q.min = 1, q.max = 6,
+              model.type = "dlm", error.type = "AIC", trace = FALSE)
+```
+
+Berdasarkan output tersebut, lag optimum didapatkan ketika lag=6. Selanjutnya dilakukan pemodelan untuk lag=6
+
+```{r}
+#model dlm dengan lag optimum
+model.dlm2 <- dlm(x = train$SolidFuel,y = train$Total , q = 6)
+summary(model.dlm2)
+AIC(model.dlm2)
+BIC(model.dlm2)
+```
+
+Adapun hasil peramalan 5 periode kedepan menggunakan model tersebut adalah sebagai berikut
+
+```{r}
+#peramalan dan akurasi
+fore.dlm2 <- forecast(model = model.dlm2, x=test$SolidFuel, h=25)
+mape.dlm2<- MAPE(fore.dlm2$forecasts, test$Total)
+#akurasi data training
+GoF(model.dlm2)
+```
+
+
+## Model Autoregressive
+### Pemodelan
+
+```{r}
+model.ardl <- ardlDlm(x = train$SolidFuel, y = train$Total, p = 1 , q = 1)
+summary(model.ardl)
+AIC(model.ardl)
+BIC(model.ardl)
+```
+
+### Peramalan dan Akurasi
+
+```{r}
+fore.ardl <- forecast(model = model.ardl, x=test$SolidFuel, h=25)
+fore.ardl
+```
+
+Data di atas merupakan hasil peramalan untuk 25 periode ke depan menggunakan Model Autoregressive.
+
+```{r}
+mape.ardl <- MAPE(fore.ardl$forecasts, test$Total)
+mape.ardl
+#akurasi data training
+GoF(model.ardl)
+```
+```{r}
+#penentuan lag optimum
+model.ardl.opt <- ardlBoundOrders(data = data.frame(data), ic = "AIC", 
+                                  formula = Total ~ SolidFuel )
+min_p=c()
+for(i in 1:6){
+  min_p[i]=min(model.ardl.opt$Stat.table[[i]])
+}
+q_opt=which(min_p==min(min_p, na.rm = TRUE))
+p_opt=which(model.ardl.opt$Stat.table[[q_opt]] == 
+              min(model.ardl.opt$Stat.table[[q_opt]], na.rm = TRUE))
+data.frame("q_optimum" = q_opt, "p_optimum" = p_opt, 
+           "AIC"=model.ardl.opt$min.Stat)
+```
+
+
+## Pemodelan DLM & ARDL 
+
+```{r}
+#sama dengan model dlm q=2
+cons_lm1 <- dynlm(Total ~ SolidFuel+L(SolidFuel)+L(SolidFuel,2),data = train.ts)
+#sama dengan dlm q=6
+cons_lm2 <- dynlm(Total ~ SolidFuel+L(SolidFuel)+L(SolidFuel,2)+L(SolidFuel,3)+L(SolidFuel,4)+L(SolidFuel,5)
+                  +L(SolidFuel,6),data = train.ts)
+#sama dengan ardl p=1 q=1
+cons_lm3 <- dynlm(Total ~ SolidFuel+L(SolidFuel)+L(Total),data = train.ts)
+#sama dengan model ardl p=15 q=4
+cons_lm4 <- dynlm(Total ~ SolidFuel+L(Total)+L(Total,2)+L(Total,3)+L(Total,4)
+                  +L(SolidFuel)+L(SolidFuel,2)
+                  +L(SolidFuel,3)+L(SolidFuel,4)+L(SolidFuel,5)
+                  +L(SolidFuel,6)+L(SolidFuel,7)+L(SolidFuel,8)+L(SolidFuel,9)
+                  +L(SolidFuel,10)+L(SolidFuel,11)+L(SolidFuel,12)+L(SolidFuel,13)
+                  +L(SolidFuel,14)+L(SolidFuel,15)
+                  ,data = train.ts)
+
+```
+
+### Ringkasan Model
+
+```{r}
+summary(cons_lm1)
+summary(cons_lm2)
+summary(cons_lm3)
+summary(cons_lm4)
+```
+
+### SSE
+
+```{r}
+deviance(cons_lm1)
+deviance(cons_lm2)
+deviance(cons_lm3)
+deviance(cons_lm4)
+```
+
+#### Autokorelasi
+
+```{r}
+#durbin watson
+dwtest(cons_lm1)
+dwtest(cons_lm2)
+dwtest(cons_lm3)
+dwtest(cons_lm4)
+```
+
+#### Heterogenitas
+
+```{r}
+bptest(cons_lm1)
+bptest(cons_lm2)
+bptest(cons_lm3)
+bptest(cons_lm4)
+```
+
+#### Kenormalan
+
+```{r}
+shapiro.test(residuals(cons_lm1))
+shapiro.test(residuals(cons_lm2))
+shapiro.test(residuals(cons_lm3))
+shapiro.test(residuals(cons_lm4))
+```
+
+## Perbandingan Model
+
+```{r}
+akurasi <- matrix(c(mape.koyck, mape.dlm, mape.dlm2, mape.ardl))
+row.names(akurasi)<- c("Koyck","DLM 1","DLM 2","Autoregressive")
+colnames(akurasi) <- c("MAPE")
+akurasi
+```
+
+Berdasarkan nilai MAPE, model paling optimum didapat pada Model Koyck karena memiliki nilai MAPE yang terkecil.
+
+### Plot
+
+```{r}
+par(mfrow=c(1,1))
+plot(test$SolidFuel, test$Total, type="b", col="black", ylim=c(120,250))
+points(test$SolidFuel, fore.koyck$forecasts,col="red")
+lines(test$SolidFuel, fore.koyck$forecasts,col="red")
+points(test$SolidFuel, fore.dlm$forecasts,col="blue")
+lines(test$SolidFuel, fore.dlm$forecasts,col="blue")
+points(test$SolidFuel, fore.dlm2$forecasts,col="orange")
+lines(test$SolidFuel, fore.dlm2$forecasts,col="orange")
+points(test$SolidFuel, fore.ardl$forecasts,col="green")
+lines(test$SolidFuel, fore.ardl$forecasts,col="green")
+legend("topleft",c("aktual", "koyck","DLM 1","DLM 2", "autoregressive"), lty=1, col=c("black","red","blue","orange","green"), cex=0.8)
+```
+
