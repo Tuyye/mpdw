@@ -1,8 +1,8 @@
 ---
 title: "G1401211067_MPDW4"
-author : Rifqi Rustu Andana 
-output: html_document
+author: "Rifqi Rustu Andana"
 date: "2023-09-21"
+output: html_document
 ---
 
 ```{r setup, include=FALSE}
@@ -12,7 +12,6 @@ knitr::opts_chunk$set(echo = TRUE)
 #### Nomor 1
 
 ### Manual
-
 ```{r}
 set.seed(067)
 wn <- rnorm(300)
@@ -26,9 +25,7 @@ acf(wn, xlim = c(1, 20))
 ```
 
 ## Proses MA
-
 ```{r}
-ma <- NULL
 ma[1] <- wn[1]
 ma[2] <- wn[2]
 ```
@@ -43,27 +40,21 @@ ma
 ## Plot
 
 # Plot Time Series
-
 ```{r}
 ts.plot(ma)
 ```
 
-Dapat kita lihat dari plot time series yang tertera bahwa data tersebut stasioner
-
 # Plot ACF
-
 ```{r}
 acf(ma,lag.max = 20)
 ```
 
 # Plot PACF
-
 ```{r}
 pacf(ma)
 ```
 
 # Plot EACF
-
 ```{r}
 TSA::eacf(ma)
 ```
@@ -99,15 +90,12 @@ yt_ma2
 yt_2_ma <- ma[-c(299,300)]
 yt_2_ma
 ```
-
 ```{r}
 plot(y=yt_ma2,x=yt_2_ma)
 ```
-
 ```{r}
 cor(yt_ma2,yt_2_ma)
 ```
-
 ```{r}
 #Yt
 yt_ma3 <- ma[-c(1,2,3)]
@@ -116,11 +104,9 @@ yt_ma3
 yt_3_ma <- ma[-c(298,299,300)]
 yt_3_ma
 ```
-
 ```{r}
 plot(y=yt_ma3,x=yt_3_ma)
 ```
-
 ```{r}
 cor(yt_ma3,yt_3_ma)
 ```
@@ -131,31 +117,24 @@ cor(yt_ma3,yt_3_ma)
 ma2 <- arima.sim(list(order=c(0,0,2), ma=c(0.4,0.6)), n=300)
 ma2
 ```
-
 ## Plot (arima.sim)
 
 # Plot Time Series
-
 ```{r}
 ts.plot(ma2)
 ```
 
-Dapat kita lihat dari plot time series yang tertera bahwa data tersebut stasioner
-
 # Plot ACF
-
 ```{r}
 acf(ma2,lag.max = 20)
 ```
 
 # Plot PACF
-
 ```{r}
 pacf(ma2)
 ```
 
 # Plot EACF
-
 ```{r}
 TSA::eacf(ma2)
 ```
@@ -191,11 +170,9 @@ yt_ma2
 yt_2_ma <- ma2[-c(299,300)]
 yt_2_ma
 ```
-
 ```{r}
 plot(y=yt_ma2,x=yt_2_ma)
 ```
-
 ```{r}
 cor(yt_ma2,yt_2_ma)
 ```
@@ -217,10 +194,11 @@ plot(y=yt_ma3,x=yt_3_ma)
 cor(yt_ma3,yt_3_ma)
 ```
 
+
+
 #### Nomer 2
 
 ## Proses AR
-
 ```{r}
 set.seed(067)
 ```
@@ -241,7 +219,6 @@ ar1
 ```
 
 ## Karakteristik AR(2)
-
 ### Plot Time Series
 
 ```{r}
@@ -249,7 +226,6 @@ ts.plot(ar)
 ```
 
 ### Plot ACF
-
 ```{r}
 acf(ar)
 ```
@@ -267,7 +243,6 @@ TSA::eacf(ar)
 ```
 
 ### Scatterplot Antar Lag
-
 #### Korelasi antara $Y_t$ dengan $Y_{t-1}$
 
 ```{r}
@@ -282,7 +257,6 @@ yt_1_ar
 ```{r}
 plot(y=yt_ar,x=yt_1_ar)
 ```
-
 ```{r}
 cor(yt_ar,yt_1_ar)
 ```
@@ -305,7 +279,6 @@ plot(y=yt_ar2,x=yt_2_ar)
 ```{r}
 cor(yt_ar2,yt_2_ar)
 ```
-
 #### Korelasi antara $Y_t$ dengan $Y_{t-3}$
 
 ```{r}
@@ -326,7 +299,6 @@ cor(yt_ar3,yt_3_ar)
 ```
 
 ## AR (arima.sim)
-
 ```{r}
 set.seed(067)
 ```
@@ -337,17 +309,13 @@ ar1
 ```
 
 ### Plot
-
 ## Plot Time Series
 
 ```{r}
 ts.plot(ar1)
 ```
 
-Dapat kita lihat dari plot time series yang tertera bahwa data tersebut stasioner
-
 ## Plot ACF
-
 ```{r}
 acf(ar1)
 ```
@@ -365,7 +333,6 @@ TSA::eacf(ar1)
 ```
 
 ### Scatterplot Antar Lag
-
 ## Korelasi antara $Y_t$ dengan $Y_{t-1}$
 
 ```{r}
@@ -380,7 +347,6 @@ yt_1_ar
 ```{r}
 plot(y=yt_ar,x=yt_1_ar)
 ```
-
 ```{r}
 cor(yt_ar,yt_1_ar)
 ```
@@ -403,7 +369,6 @@ plot(y=yt_ar2,x=yt_2_ar)
 ```{r}
 cor(yt_ar2,yt_2_ar)
 ```
-
 ## Korelasi antara $Y_t$ dengan $Y_{t-3}$
 
 ```{r}
@@ -424,7 +389,6 @@ cor(yt_ar3,yt_3_ar)
 ```
 
 ### Nomer 3
-
 ## Fungsi pembangkitan ARMA
 
 ```{r}
@@ -454,8 +418,6 @@ ts.plot(arma11)
 par(mfrow = c(1, 1))
 ```
 
-Dapat kita lihat dari plot time series yang tertera bahwa data tersebut stasioner
-
 ### Plot ACF
 
 ```{r}
@@ -481,68 +443,8 @@ TSA::eacf(y.arma)
 TSA::eacf(arma11)
 ```
 
+
 ### Scatterplot Antar Lag
-
-# Data Manual
-
-#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
-
-```{r}
-#Yt
-yt_arma <- y.arma[-1]
-yt_arma
-#Yt-1
-yt_1_arma <- y.arma[-300]
-yt_1_arma
-```
-
-```{r}
-plot(y=yt_arma,x=yt_1_arma)
-```
-
-```{r}
-cor(yt_arma,yt_1_arma)
-```
-
-#### Korelasi antara $Y_t$ dengan $Y_{t-2}$
-
-```{r}
-#Yt
-yt_arma2 <- y.arma[-c(1,2)]
-yt_arma2
-#Yt-2
-yt_2_arma <- y.arma[-c(299,300)]
-yt_2_arma
-```
-
-```{r}
-plot(y=yt_arma2,x=yt_2_arma)
-```
-
-```{r}
-cor(yt_arma2,yt_2_arma)
-```
-
-#### Korelasi antara $Y_t$ dengan $Y_{t-3}$
-
-```{r}
-#Yt
-yt_arma3 <- y.arma[-c(1,2,3)]
-yt_arma3
-#Yt-3
-yt_3_arma <- y.arma[-c(298,299,300)]
-yt_3_arma
-```
-
-```{r}
-plot(y=yt_arma3,x=yt_3_arma)
-```
-
-```{r}
-cor(yt_arma3,yt_3_arma)
-```
-
-# Data (arima.sim)
 
 #### Korelasi antara $Y_t$ dengan $Y_{t-1}$
 
@@ -559,12 +461,13 @@ yt_1_arma
 plot(y=yt_arma,x=yt_1_arma)
 ```
 
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. Hal ini sesuai dengan teori yang ada
+
+
 ```{r}
 cor(yt_arma,yt_1_arma)
 ```
-
 #### Korelasi antara $Y_t$ dengan $Y_{t-2}$
-
 ```{r}
 #Yt
 yt_arma2 <- arma11[-c(1,2)]
@@ -578,12 +481,12 @@ yt_2_arma
 plot(y=yt_arma2,x=yt_2_arma)
 ```
 
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. Hal ini sesuai dengan teori yang ada
+
 ```{r}
 cor(yt_arma2,yt_2_arma)
 ```
-
-#### Korelasi antara $Y_t$ dengan $Y_{t-3}$
-
+#### Korelasi antara $Y_t$ dengan $Y_{t-1}$
 ```{r}
 #Yt
 yt_arma3 <- arma11[-c(1,2,3)]
@@ -596,6 +499,8 @@ yt_3_arma
 ```{r}
 plot(y=yt_arma3,x=yt_3_arma)
 ```
+
+Berdasarkan scatterplot tersebut, terlihat bahwa terdapat hubungan positif antara $Y_t$ dengan $Y_{t-1}$. Hal ini sesuai dengan teori yang ada
 
 ```{r}
 cor(yt_arma3,yt_3_arma)

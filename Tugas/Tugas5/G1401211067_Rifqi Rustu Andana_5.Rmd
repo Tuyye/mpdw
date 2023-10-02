@@ -1,0 +1,184 @@
+---
+title: "Tugas Pertemuan 5"
+author: "Rifqi Rustu Andana - G1401211067"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+---
+
+```{r}
+library(ggplot2)
+library(tsibble)
+library(tseries)
+library(MASS)
+```
+
+
+# Input data
+
+```{r}
+datazamboanga<- read.csv("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/Tugas1/Suhu%20Zamboanga.csv" )
+datazamboanga
+```
+
+# Data FULL
+
+### Ubah data ke ts
+
+```{r}
+datazamboanga.ts <- ts(datazamboanga$Suhu)
+```
+
+### Membuat plot time series
+
+```{r}
+ts.plot(datazamboanga.ts, xlab="Time Period ", ylab="Suhu Zamboanga", 
+        main = "Time Series Plot")
+points(datazamboanga.ts)
+```
+
+### Plot ACF
+
+```{r}
+acf(datazamboanga.ts)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF pada data tersebut cenderung *tails off* dan membentuk gelombang sinus.
+
+### Uji ADF
+
+```{r}
+tseries::adf.test(datazamboanga.ts)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa data stasioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF.
+
+### Plot Box-Cox
+
+```{r}
+index <- seq(1:144)
+bc = boxcox(datazamboanga.ts~index, lambda = seq(-8,9,by=0.01))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+
+Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **0.66** dan pada selang kepercayaan 95% nilai memiliki batas bawah **-5.91** dan batas atas **4.08**. Selang tersebut memuat nilai satu sehingga dapat dikatakan bahwa data bangkitan stasioner dalam ragam.
+
+Kesimpulan: Maka data tersebut stasioner dalam rataan dan ragam
+
+# Partisi data
+
+# Bagian 1
+
+```{r}
+datazamboanga.ts1 <- datazamboanga$Suhu[1:48] |> ts()
+mean(datazamboanga.ts1)
+var(datazamboanga.ts1)
+```
+
+### Membuat plot time series
+
+```{r}
+ts.plot(datazamboanga.ts1, xlab="Time Period ", ylab="Suhu Zamboanga", 
+        main = "Time Series Plot")
+points(datazamboanga.ts1)
+```
+
+### Plot ACF
+
+```{r}
+acf(datazamboanga.ts1)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF pada data tersebut cenderung *tails off* dan membentuk gelombang sinus.
+
+### Uji ADF
+
+```{r}
+tseries::adf.test(datazamboanga.ts1)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.2484 yang lebih kecil dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa data tidak stasioner dalam rataan. 
+
+### Plot Box-Cox
+
+```{r}
+index.1 <- seq(1:48)
+bc.1 = boxcox(datazamboanga.ts1~index.1, lambda = seq(-8,9,by=0.01))
+#Nilai Rounded Lambda
+lambda.1 <- bc.1$x[which.max(bc.1$y)]
+lambda.1
+#SK
+bc.1$x[bc.1$y > max(bc.1$y) - 1/2 * qchisq(.95,1)]
+```
+
+Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **-5** dan pada selang kepercayaan 95% nilai memiliki batas bawah **-8.00** dan batas atas **1.99**. Selang tersebut memuat nilai satu sehingga dapat dikatakan bahwa data bangkitan stasioner dalam ragam.
+
+Kesimpulan partisi 1: Maka data tersebut stasioner dalam rataan dan ragam
+
+# Bagian 2
+
+```{r}
+datazamboanga.ts2 <- datazamboanga$Suhu[49:144] |> ts()
+mean(datazamboanga.ts2)
+var(datazamboanga.ts2)
+```
+
+### Membuat plot time series
+
+```{r}
+ts.plot(datazamboanga.ts2, xlab="Time Period ", ylab="Suhu Zamboanga", 
+        main = "Time Series Plot")
+points(datazamboanga.ts2)
+```
+
+### Plot ACF
+
+```{r}
+acf(datazamboanga.ts2)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF pada data tersebut cenderung *tails off* dan membentuk gelombang sinus.
+
+### Uji ADF
+
+```{r}
+tseries::adf.test(datazamboanga.ts2)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01458 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa data stasioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF.
+
+### Plot Box-Cox
+
+```{r}
+index.2 <- seq(49:144)
+bc.2 = boxcox(datazamboanga.ts2~index.2, lambda = seq(-2,6,by=0.01))
+#Nilai Rounded Lambda
+lambda.2 <- bc.2$x[which.max(bc.2$y)]
+lambda.2
+#SK
+bc.2$x[bc.2$y > max(bc.2$y) - 1/2 * qchisq(.95,1)]
+```
+
+Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **2.6** dan pada selang kepercayaan 95% nilai memiliki batas bawah **-2.00** dan batas atas **6.00**. Selang tersebut memuat nilai satu sehingga dapat dikatakan bahwa data bangkitan stasioner dalam ragam.
+
+Kesimpulan partisi 2: Maka data tersebut stasioner dalam rataan dan ragam
