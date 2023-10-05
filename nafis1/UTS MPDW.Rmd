@@ -1,0 +1,1071 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+---
+
+### Library
+
+```{r}
+library("forecast")
+library("graphics")
+library("TTR")
+library("TSA")
+library(dplyr)
+library(forecast)
+library(lmtest) 
+library(orcutt) 
+library(HoRM) 
+library(corrplot)
+library(dLagM)
+library(dynlm)
+library(MLmetrics)
+library(ggplot2)
+library(tsibble)
+library(tseries)
+library(MASS)
+library(aTSA)
+```
+
+
+### Input data
+
+```{r}
+dataziq <- read.csv("https://raw.githubusercontent.com/Raziqizzan03/MPDW/main/data/Pertemuan1/data%20suhu%20mekkah.csv")
+dataziq
+```
+
+### Ubah data menjadi
+
+```{r}
+dataziq.ts <- ts(dataziq$suhu.mekkah)
+```
+
+### Membagi data menjadi data latih (80%) dan data uji (20%) dan jadikan time series
+
+```{r}
+dt.latih <- dataziq[1:115,2]
+dt.uji <- dataziq[116:144,2]
+dt.latih.ts <- ts(dt.latih, frequency = 12)
+dt.uji.ts <- ts(dt.uji, frequency = 12)
+```
+
+
+# Eksplorasi data
+
+### Membuat plot time series
+
+```{r}
+# data full
+ts.plot(dataziq.ts, col="purple",main="Plot semua data", type="o",xlab="Time",ylab="Data")
+points(dataziq.ts)
+
+# data latih
+ts.plot(dt.latih.ts, col="orange",main="Plot data latih", type="o",xlab="Time",ylab="Data")
+points(dt.latih.ts)
+
+# data uji
+ts.plot(dt.uji.ts, col="green",main="Plot data uji", type="o",xlab="Time",ylab="Data")
+points(dt.uji.ts)
+```
+
+dapat dilihat bahwwa data deret waktu pada suhu mekkah membentuk pola aditif musiman tanpa trend
+
+# Pemulusan
+
+## Single Moving Average
+
+### Pemulusan dan peramalan
+
+```{r}
+data.sma <- SMA(dt.latih.ts,n=4)
+data.sma
+
+data.ramal<-c(NA,data.sma)
+data.ramal
+
+# Forecasting 29 periode
+data.gab<-cbind(aktual=c(dt.latih.ts,rep(NA,29)),pemulusan=c(data.sma,rep(NA,29)),ramalan=c(data.ramal,rep(data.ramal[length(data.ramal)],28)))
+data.gab
+```
+
+### Plot forecasting
+
+```{r}
+ts.plot(dataziq.ts, xlab="Time Period ", ylab="Data", main= "SMA m = 4")
+points(dataziq.ts)
+lines(data.gab[,2],col="green",lwd=2)
+lines(data.gab[,3],col="red",lwd=2)
+legend("topleft",c("data aktual","data pemulusan","data peramalan"), lty=8, col=c("black","green","red"), cex=0.5)
+```
+
+### Akurasi data latih
+
+```{r}
+#Menghitung nilai keakuratan data latih
+error_train.sma = dt.latih.ts-data.ramal[1:length(dt.latih.ts)]
+SSE_train.sma = sum(error_train.sma[5:length(dt.latih.ts)]^2)
+MSE_train.sma = mean(error_train.sma[5:length(dt.latih.ts)]^2)
+MAPE_train.sma = mean(abs((error_train.sma[5:length(dt.latih.ts)]/dt.latih.ts[5:length(dt.latih.ts)])*100))
+
+akurasi_train.sma <- matrix(c(SSE_train.sma, MSE_train.sma, MAPE_train.sma))
+row.names(akurasi_train.sma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi_train.sma) <- c("Akurasi m = 4")
+akurasi_train.sma
+```
+
+Dalam hal ini nilai MAPE data latih pada metode pemulusan SMA kurang dari 18%, nilai ini dapat dikategorikan sebagai nilai akurasi yang sangat baik.
+
+### Akurasi data uji
+
+```{r}
+#Menghitung nilai keakuratan data uji
+error_test.sma = dt.uji.ts-data.gab[116:144,3]
+SSE_test.sma = sum(error_test.sma^2)
+MSE_test.sma = mean(error_test.sma^2)
+MAPE_test.sma = mean(abs((error_test.sma/dt.uji.ts*100)))
+
+akurasi_test.sma <- matrix(c(SSE_test.sma, MSE_test.sma, MAPE_test.sma))
+row.names(akurasi_test.sma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi_test.sma) <- c("Akurasi m = 4")
+akurasi_test.sma
+```
+
+Perhitungan akurasi menggunakan data latih menghasilkan nilai MAPE yang kurang dari 20% sehingga nilai akurasi ini dapat dikategorikan sebagai sangat baik.
+
+## Double Moving Average (DMA)
+
+### Pemulusan dan Peramalan
+
+```{r}
+dma <- SMA(data.sma, n = 4)
+At <- 2*data.sma - dma
+Bt <- 2/(4-1)*(data.sma - dma)
+data.dma<- At+Bt
+
+# Peramalan
+data.ramal2<- c(NA, data.dma)
+
+t = 1:29
+f = c()
+
+for (i in t) {
+  f[i] = At[length(At)] + Bt[length(Bt)]*(i)
+}
+
+data.gab2 <- cbind(aktual = c(dt.latih.ts,rep(NA,29)), pemulusan1 = c(data.sma,rep(NA,29)),pemulusan2 = c(data.dma, rep(NA,29)),At = c(At, rep(NA,29)), Bt = c(Bt,rep(NA,29)),ramalan = c(data.ramal2, f[-1]))
+data.gab2
+```
+
+### Plot Forecasting
+
+```{r}
+ts.plot(dataziq.ts, xlab="Time Period", ylab="Data", main= "DMA N=4")
+points(dataziq.ts)
+lines(data.gab2[,3],col="green",lwd=2)
+lines(data.gab2[,6],col="red",lwd=2)
+legend("topleft",c("data aktual","data pemulusan","data peramalan"), lty=8, col=c("black","green","red"), cex=0.8)
+```
+
+### Akurasi data latih
+
+```{r}
+error_train.dma = dt.latih.ts-data.ramal2[1:length(dt.latih.ts)]
+SSE_train.dma = sum(error_train.dma[8:length(dt.latih.ts)]^2)
+MSE_train.dma = mean(error_train.dma[8:length(dt.latih.ts)]^2)
+MAPE_train.dma = mean(abs((error_train.dma[8:length(dt.latih.ts)]/dt.latih.ts[8:length(dt.latih.ts)])*100))
+
+akurasi_train.dma <- matrix(c(SSE_train.dma, MSE_train.dma, MAPE_train.dma))
+row.names(akurasi_train.dma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi_train.dma) <- c("Akurasi m = 4")
+akurasi_train.dma
+```
+
+Perhitungan akurasi pada data latih menggunakan nilai MAPE menghasilkan nilai MAPE yang kurang dari 10% sehingga dikategorikan sangat baik.
+
+### Akurasi data uji
+
+```{r}
+error_test.dma = dt.uji.ts-data.gab2[116:144,6]
+SSE_test.dma = sum(error_test.dma^2)
+MSE_test.dma = mean(error_test.dma^2)
+MAPE_test.dma = mean(abs((error_test.dma/dt.uji.ts*100)))
+
+akurasi_test.dma <- matrix(c(SSE_test.dma, MSE_test.dma, MAPE_test.dma))
+row.names(akurasi_test.dma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi_test.dma) <- c("Akurasi m = 4")
+akurasi_test.dma
+```
+
+
+Perhitungan akurasi menggunakan data latih menghasilkan nilai MAPE yang kurang dari 10%
+
+## Winter aditif
+
+### Pemulusan dan Peramalan
+
+```{r}
+# optimum
+winter.opt<- HoltWinters(dt.latih.ts, alpha= NULL,  beta = NULL, gamma = NULL, seasonal = "additive")
+winter.opt
+winter.opt$fitted
+xhat.opt <- winter.opt$fitted[,2]
+
+# Peramalan
+forecast.opt <- predict(winter.opt, n.ahead = 29)
+forecast.opt
+```
+
+### Plot forecasting
+
+```{r}
+plot(dt.latih.ts,main="Winter optimum",type="l",col="black",
+     xlim=c(1,25),pch=20)
+lines(xhat.opt,type="l",col="green")
+lines(forecast.opt,type="l",col="green")
+```
+
+### Akurasi data latih
+
+```{r}
+SSE.opt<-winter.opt$SSE
+MSE.opt<-winter.opt$SSE/length(dt.latih.ts)
+RMSE.opt<-sqrt(MSE.opt)
+akurasi.opt <- matrix(c(SSE.opt,MSE.opt,RMSE.opt))
+row.names(akurasi.opt)<- c("SSE.opt", "MSE.opt", "RMSE.opt")
+colnames(akurasi.opt) <- c("Akurasi")
+akurasi.opt
+```
+
+### Akurasi data uji
+
+```{r}
+forecast.opt<-data.frame(forecast.opt)
+dt.uji.ts <- data.frame(dt.uji.ts)
+selisih.opt<-(forecast.opt)-(dt.uji.ts)
+SSEuji.opt<-sum(selisih.opt^2)
+MSEuji.opt<-SSEuji.opt/length(dt.uji.ts)
+akurasi.opt <- matrix(c(SSE.opt,MSE.opt))
+row.names(akurasi.opt)<- c("SSEuji.opt", "MSEuji.opt")
+colnames(akurasi.opt) <- c("Akurasi")
+akurasi.opt
+```
+
+# Penanganan Autokorelasi
+
+### Input data
+
+```{r}
+datasol <- read.csv("https://raw.githubusercontent.com/Raziqizzan03/MPDW/main/data/Pertemuan1/data%20tugas%203.csv")
+View(datasol)
+str(datasol)
+# Peubah yang digunakan
+high <- datasol$High
+low <- datasol$low
+close <- datasol$close
+Volume <- datasol$volume
+Open <- datasol$open
+```
+
+### Mengubah data menjadi data deret waktu
+
+```{r}
+high.ts <- ts(high)
+low.ts <- ts(low)
+close.ts <- ts(close)
+open.ts <- ts(Open)
+volume.ts <- ts(Volume)
+```
+
+### Pembuatan regresi time series
+
+### Pembuatan model awal
+
+```{r}
+model1 <- lm(Volume~high+low)
+summary(model1)
+```
+
+Model yang dihasilkan adalah $$y_i=-36129324+ 16558983x1_t+-13398606x2_t$$ Berdasarkan ringkasan model dapat diketahui bahwa hasil uji F memiliki *p-value* \< $\alpha$ (5%). Artinya, minimal terdapat satu variabel yang berpengaruh nyata terhadap model. Hasil uji-t parsial parameter regresi, yaitu koefisien regresi juga menunjukkan hal yang sama, yaitu memiliki *p-value* \< $\alpha$ (5%) sehingga nyata dalam taraf 5%. Selanjutnya dapat dilihat juga nilai $R^2=0.06787$. Artinya, sebesar 6% keragaman nilai volume dapat dijelaskan oleh peubah high dan low. Namun, kita perlu melakukan uji terhadap sisaannya seperti berikut ini.
+
+### plot asumsi
+
+```{r}
+#sisaan dan fitted value
+sisaan1<- residuals(model1)
+fitValue1<- predict(model1)
+
+#Diagnostik dengan eksploratif
+par(mfrow = c(2,2))
+qqnorm(sisaan1)
+qqline(sisaan1, col = "steelblue", lwd = 2)
+plot(fitValue1, sisaan1, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
+abline(a = 0, b = 0, lwd = 2)
+hist(sisaan1, col = "steelblue")
+plot(seq(1,199,1), sisaan1, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
+lines(seq(1,199,1), sisaan1, col = "red")
+abline(a = 0, b = 0, lwd = 2)
+```
+
+Dua plot di samping kiri digunakan untuk melihat apakah sisaan menyebar normal. Normal Q-Q Plot di atas menunjukkan bahwa sisaan cenderung tidak menyebar normal, dan histogram dari sisaan menunjukkan demikian. Selanjutnya, dua plot di samping kanan digunakan untuk melihat autokorelasi. Plot Sisaan vs *Fitted Value* dan Plot Sisaan vs *Order* menunjukkan adanya pola pada sisaan. Untuk lebih lanjut akan digunakan uji formal melihat normalitas sisaan dan plot ACF dan PACF untuk melihat apakah ada autokorelasi atau tidak.
+
+### Uji formal Normalitas
+
+```{r}
+#H0: sisaan mengikuti sebaran normal
+#H1: sisaan tidak mengikuti sebaran normal
+ks.test(sisaan1, "pnorm", mean=mean(sisaan1), sd=sd(sisaan1))
+```
+
+Berdasarkan uji formal Kolmogorov-Smirnov didapatkan nilai *p-value* \< $\alpha$ (5%). Artinya, belum cukup bukti untuk menyatakan sisaan berdistribusi normal.
+
+### Transformasi karna data tidak normal (1/x dan 1/y)
+
+```{r}
+Volumetrans <- 1/(Volume)
+hightrans <- 1/(high)
+lowtrans <- 1/(low)
+# Model transformasi
+modeltrans <- lm(Volumetrans~hightrans+lowtrans)
+summary(modeltrans)
+```
+
+Model transforasi yang dihasilkan adalah $$y_i=-2.296e-07+ 2.662e-05x1_t+-2.118e-05x2_t$$ Berdasarkan ringkasan model dapat diketahui bahwa hasil uji F memiliki *p-value* \< $\alpha$ (5%). Artinya, minimal terdapat satu variabel yang berpengaruh nyata terhadap model. Hasil uji-t parsial parameter regresi, yaitu koefisien regresi juga menunjukkan hal yang sama, yaitu memiliki *p-value* \< $\alpha$ (5%) sehingga nyata dalam taraf 5%. Selanjutnya dapat dilihat juga nilai $R^2=0.1021$. Artinya, sebesar 10% keragaman nilai volume dapat dijelaskan oleh peubah high dan low. Namun, kita perlu melakukan uji terhadap sisaannya seperti berikut ini.
+
+### cek ulang normalitas
+
+```{r}
+#sisaan dan fitted value
+sisaan1<- residuals(modeltrans)
+fitValue1<- predict(modeltrans)
+
+#Diagnostik dengan eksploratif
+par(mfrow = c(2,2))
+qqnorm(sisaan1)
+qqline(sisaan1, col = "steelblue", lwd = 2)
+plot(fitValue1, sisaan1, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
+abline(a = 0, b = 0, lwd = 2)
+hist(sisaan1, col = "steelblue")
+plot(seq(1,199,1), sisaan1, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
+lines(seq(1,199,1), sisaan1, col = "red")
+abline(a = 0, b = 0, lwd = 2)
+
+# Uji Formal normalitas
+#H0: sisaan mengikuti sebaran normal
+#H1: sisaan tidak mengikuti sebaran normal
+ks.test(sisaan1, "pnorm", mean=mean(sisaan1), sd=sd(sisaan1))
+```
+
+Dua plot di samping kiri digunakan untuk melihat apakah sisaan menyebar normal. Normal Q-Q Plot di atas menunjukkan bahwa sisaan cenderung menyebar normal, dan histogram dari sisaan menunjukkan demikian. 
+Berdasarkan uji formal Kolmogorov-Smirnov didapatkan nilai *p-value* \> $\alpha$ (5%). Artinya, cukup bukti untuk menyatakan sisaan berdistribusi normal.
+
+### ACF dan PACF identifikasi autokorelasi
+```{r}
+par(mfrow = c(1,2))
+acf(sisaan1)
+pacf(sisaan1)
+```
+
+Berdasarkan plot ACF dan PACF, terlihat terdapat data yang berada diluar rentang batas sehingga ada yang signifikan. Namun, untuk lebih memastikan akan dilakukan uji formal dengan uji Durbin Watson.
+
+### Uji formal autokorelasi
+
+```{r}
+#H0: tidak ada autokorelasi
+#H1: ada autokorelasi
+dwtest(modeltrans)
+```
+
+Berdasarkan hasil DW Test, didapatkan nilai $DW = 1.6646$ dan *p-value* = $0.006793$. Dengan nilai *p-value* \< 0.05 dapat disimpulkan bahwa tolak H0, cukup bukti mengatakan adanya autokorelasi. Oleh karena itu, diperlukan penangan autokorelasi. Penanganan yang akan digunakan menggunakan dua metode, yaitu Cochrane-Orcutt dan Hildret-Lu.
+
+### Metode Cochrane-Orcutt
+
+```{r}
+#Penanganan Autokorelasi Cochrane-Orcutt
+modelCO1<-cochrane.orcutt(modeltrans)
+modelCO1
+modelCO1$coefficients
+```
+
+Hasil keluaran model setelah dilakukan penanganan adalah sebagai berikut. $$y_i=-1.916405e-07+2.339589e-05x1_t+-1.854019e-05x2_t$$ Hasil juga menunjukkan bahwa nilai DW dan p-value meningkat menjadi $2.03818$ dan $0.579$. dengan nilai *p-value* \> 0.05, artinya belum cukup bukti menyatakan bahwa sisaan terdapat autokorelasi pada taraf nyata 5%. Untuk nilai $ρ ̂$ optimum yang digunakan adalah $0.173819$. Nilai tersebut dapat diketahui dengan *syntax* berikut.
+
+```{r}
+#Rho optimum
+rho1<- modelCO1$rho
+rho1
+```
+
+### Transformasi manual
+
+```{r}
+#Transformasi Manual
+volume.trans<- Volumetrans[-1]-Volumetrans[-199]*rho1
+high.trans<- hightrans[-1]-hightrans[-199]*rho1
+low.trans<- lowtrans[-1]-lowtrans[-199]*rho1
+modelCOmanual1<- lm(volume.trans~high.trans+low.trans)
+summary(modelCOmanual1)
+```
+
+```{r}
+#Mencari Penduga Koefisien Regresi setelah Transformasi ke Persamaan Awal
+b0bintang1 <- modelCOmanual1$coefficients[1]
+b0.1<- b0bintang1/(1-rho1)
+b1.1 <- modelCOmanual1$coefficients[2]
+b2.1 <- modelCOmanual1$coefficients[3]
+b0.1
+b1.1
+b2.1
+```
+
+### Metode Hildreth-Lu
+
+```{r}
+hildreth.lu.func<- function(r, model){
+  x1 <- model.matrix(model)[,c(-1,-3)]
+  x2 <- model.matrix(model)[,c(-1,-2)]
+  y <- model.response(model.frame(model))
+  n <- length(y)
+  t <- 2:n
+  y <- y[t]-r*y[t-1]
+  x1 <- x1[t]-r*x1[t-1]
+  x2 <- x2[t]-r*x2[t-1]
+  
+  return(lm(y~x1+x2))
+}
+
+#Pencariab rho yang meminimumkan SSE
+r1 <- c(seq(0.1,0.9, by= 0.1))
+tab1 <- data.frame("rho" = r1, "SSE" = sapply(r1, function(i){deviance(hildreth.lu.func(i, modeltrans))}))
+tab1
+```
+
+Pertama-tama akan dicari di mana kira-kira $ρ$ yang menghasilkan SSE minimum. Pada hasil di atas terlihat $ρ$ minimum ketika 0.2. Namun, hasil tersebut masih kurang teliti sehingga akan dicari kembali $ρ$ yang lebih optimum dengan ketelitian yang lebih. Jika sebelumnya jarak antar $ρ$ yang dicari adalah 0.1, kali ini jarak antar $ρ$ adalah 0.001 dan dilakukan pada selang 0.1 sampai dengan 0.4.
+
+```{r}
+rOpt1<- seq(0.1,0.4, by= 0.001)
+tabOpt1 <- data.frame("rho" = rOpt1, "SSE" = sapply(rOpt1, function(i){deviance(hildreth.lu.func(i, modeltrans))}))
+head(tabOpt1[order(tabOpt1$SSE),])
+
+#Grafik SSE optimum
+par(mfrow = c(1,1))
+plot(tab1$SSE ~ tab1$rho , type = "l", xlab = "Rho", ylab = "SSE")
+abline(v = tabOpt1[tabOpt1$SSE==min(tabOpt1$SSE),"rho"], lty = 2, col="red",lwd=2)
+text(x=0.174, y=8.084217e-13		, labels = "rho=0.174", cex = 0.8)
+```
+
+Perhitungan yang dilakukan aplikasi `R` menunjukkan bahwa nilai $ρ$ optimum, yaitu saat SSE terkecil terdapat pada nilai $ρ=0.174$. Hal tersebut juga ditunjukkan pada plot. Selanjutnya, model dapat didapatkan dengan mengevaluasi nilai $ρ$ ke dalam fungsi `hildreth.lu.func`, serta dilanjutkan dengan pengujian autokorelasi dengan uji Durbin-Watson. Namun, setelah pengecekan tersebut tidak lupa koefisien regresi tersebut digunakan untuk transformasi balik. Persamaan hasil transformasi itulah yang menjadi persamaan sesungguhnya.
+
+```{r}
+#Model terbaik
+modelHL1 <- hildreth.lu.func(0.174, modeltrans)
+summary(modelHL1)
+
+#Transformasi Balik
+cat("y = ", coef(modelHL1)[1]/(1-0.174), "+", coef(modelHL1)[2],"x1","+", coef(modelHL1)[3],"x2", sep = "")
+```
+
+Setelah dilakukan tranformasi balik, didapatkan model dengan metode Hildreth-Lu sebagai berikut. $$y_i=-1.916083e-07+ 2.339e-05x1_t+-1.854e-05x2_t$$
+
+```{r}
+#Deteksi autokorelasi
+dwtest(modelHL1)
+dwtest(modelCOmanual1)
+```
+
+Hasil uji Durbin-Watson juga menunjukkan bahwa *p-value* sebesar $0.5805$, di mana *p-value* \> $\alpha=5%$. Artinya tak tolak $H_0$ atau belum cukup bukti menyatakan bahwa ada autokorelasi dalam data nilai volume dengan metode Hildreth-Lu pada taraf nyata 5%.
+
+### Perbandingan keakuratan
+
+```{r}
+sseModelawal1 <- anova(modeltrans)$`Sum Sq`[c(-1,-2)]
+sseModelCO1 <- anova(modelCOmanual1)$`Sum Sq`[c(-1,-2)]
+sseModelHL1 <- anova(modelHL1)$`Sum Sq`[c(-1,-2)]
+mseModelawal1 <- sseModelawal1/length(Volumetrans)
+mseModelCO1 <- sseModelCO1/length(Volumetrans)
+mseModelHL1 <- sseModelHL1/length(Volumetrans)
+akurasi1 <- matrix(c(sseModelawal1,sseModelCO1,sseModelHL1,
+                    mseModelawal1,mseModelCO1,mseModelHL1),nrow=2,ncol=3,byrow = T)
+colnames(akurasi1) <- c("Model Awal", "Model Cochrane-Orcutt", "Model Hildreth-Lu")
+row.names(akurasi1) <- c("SSE","MSE")
+akurasi1
+```
+
+### Simpulan
+
+Autokorelasi yang terdapat pada data Volume terjadi akibat adanya korelasi di antara unsur penyusunnya. Adanya autokorelasi menyebabkan model regresi kurang baik karena akan meingkatkan galatnya. Autokorelasi dapat dideteksi secara eksploratif melalui plot sisaan, ACF, dan PACF, serta dengan uji formal Durbin-Watson. Namun, autokorelasi tersebut dapat ditangani dengan metode Cochrane-Orcutt dan Hildreth-Lu. Kedua metode menghasilkan nilai SSE yang sama, artinya keduanya baik untuk digunakan
+
+# CEK Kestasioneran data
+
+### Input data
+
+```{r}
+dataSmekah<- read.csv("https://raw.githubusercontent.com/Raziqizzan03/MPDW/main/data/Pertemuan1/data%20suhu%20mekkah.csv")
+```
+
+### Ubah data ke ts
+
+```{r}
+dataSmekah.ts <- ts(dataSmekah$suhu.mekkah)
+```
+
+### Membuat plot time series
+
+```{r}
+ts.plot(dataSmekah.ts, xlab="Time Period ", ylab="Suhu Mekkah", 
+        main = "Time Series Plot")
+points(dataSmekah.ts)
+```
+
+dalam plot terlihat bahwa data stasioner dalam rataan dan ragam
+
+### Plot ACF
+
+```{r}
+acf(dataSmekah.ts)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF pada data tersebut cenderung *tails off* dan membentuk gelombang sinus.
+
+### Uji ADF
+
+```{r}
+tseries::adf.test(dataSmekah.ts)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa data stasioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF.
+
+### Plot Box-Cox
+
+```{r}
+index <- seq(1:144)
+bc = boxcox(dataSmekah.ts~index, lambda = seq(0,4,by=0.01))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+
+Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **1.68** dan pada selang kepercayaan 95% nilai memiliki batas bawah **0.57** dan batas atas **2.83**. Selang tersebut memuat nilai satu sehingga dapat dikatakan bahwa data bangkitan stasioner dalam ragam.
+
+Kesimpulan: Maka data tersebut stasioner dalam rataan dan ragam
+
+# Analisis seluruhnya
+
+## Pembangkitan Data
+
+Data yang akan dibangkitkan adalah data dengan model MA(2) sebagai berikut.
+
+```{r}
+set.seed(99)
+ma2 <- arima.sim(list(order = c(0,0,2), ma = c(0.55,0.65)), n = 175)
+```
+
+Data kemudian dibagi menjadi data latih dan data uji. Pembagian kali ini dilakukan dengan proporsi / perbandingan, yaitu 80:20.
+
+```{r}
+ma2 <- ma2[-c(1:25)]
+ma2.train <- ma2[1:120]
+ma2.test <- ma2[121:150]
+```
+
+### Eksplorasi Data
+
+Sebelum masuk dalam tahap pemodelan, dilakukan eksplorasi data dengan plot deret waktu untuk melihat pola data.
+
+```{r}
+#--PLOT TIME SERIES--#
+plot(ma2.train,
+     col = "navyblue",
+     lwd = 1,
+     type = "o",
+     xlab = "Time",
+     ylab = "Data")
+```
+
+Berdasarkan plot data deret waktu di atas, terlihat data cenderung stasioner dalam rataan dan ragam. Data stasioner dalam rataan karena menyebar/bergerak di sekitar nilai tengahnya (0) dan dikatakan stasioner dalam ragam karena memiliki lebar pita yang cenderung sama. Selain dengan plot data deret waktu, akan dilakukan pengecekan stasioneritas data dengan plot ACF dan uji ADF.
+
+```{r}
+#--CEK KESTASIONERAN---#
+acf(ma2.train, main="ACF", lag.max=20)
+```
+
+Berdasarkan plot ACF di atas, dapat dilihat bahwa plot *cuts off* pada *lag* ke-2. Hal ini sesuai dengan proses pembangkitan model MA(2).
+
+```{r}
+adf.test(ma2.train) 
+#stasioner
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01358 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa data stasioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF.
+
+### Spesifikasi Model
+
+```{r}
+#---SPESIFIKASI MODEL---#
+par(mfrow = c(1,2))
+acf(ma2.train, main="ACF", lag.max=20) #ARIMA(0,0,2)
+pacf(ma2.train, main="PACF", lag.max=20) #ARIMA(1,0,0)
+par(mfrow = c(1,1))
+```
+
+Berdasarkan Plot ACF, terlihat *cuts off* pada lag ke-2 sehingga dapat kita asumsikan model yang terbentuk adalah ARIMA(0,0,2). Selanjutnya, berdasarkan plot PACF, terlihat *cuts off* pada lag pertama sehingga model yang terbentuk adalah ARIMA(1,0,0). Selain dengan plot ACF dan PACF, penentuan spesifikasi model dilakukan dengan *extended ACF* (EACF) berikut ini.
+
+```{r}
+eacf(ma2.train) 
+#ARIMA(0,0,2) #ARIMA(1,0,3) #ARIMA(2,0,3) #ARIMA(3,0,3) 
+#Terdapat 5 model tentatif
+```
+
+Menggunakan plot EACF, dapat diambil beberapa model dengan melihat ujung segitiga yang terbentuk, antara lain ARIMA(0,0,2), ARIMA(1,0,3), ARIMA(2,0,3), dan ARIMA(3,0,3).
+
+### Pendugaan Parameter
+
+Selanjutnya akan dilakukan pendugaan parameter kelima model ARIMA yang terbentuk sebelumnya. Pendugaan dilakukan dengan fungsi `Arima()` yang dilanjutkan dengan melihat nilai AIC pada ringkasan data dan melihat signifikansi parameter.
+
+```{r}
+#---PENDUGAAN PARAMETER MODEL---#
+model1.ma2=Arima(ma2.train, order=c(0,0,2),method="ML")
+summary(model1.ma2) #AIC=326.87
+lmtest::coeftest(model1.ma2) #seluruh parameter signifikan
+
+model2.ma2=Arima(ma2.train, order=c(1,0,0),method="ML") 
+summary(model2.ma2) #AIC=340.47
+lmtest::coeftest(model2.ma2) #seluruh parameter signifikan
+
+model3.ma2=Arima(ma2.train, order=c(1,0,3),method="ML") 
+summary(model3.ma2) #AIC=329.22
+lmtest::coeftest(model3.ma2) #tidak ada yang signifikan
+
+model4.ma2=Arima(ma2.train, order=c(2,0,3),method="ML") 
+summary(model4.ma2) #AIC=330.6
+lmtest::coeftest(model4.ma2) #hanya ma2 yang signifikan
+
+model5.ma2=Arima(ma2.train, order=c(3,0,3),method="ML") 
+summary(model5.ma2) #AIC=329.87
+lmtest::coeftest(model5.ma2) #hanya ma1 dan ma2 yang signifikan
+
+#model yang dipilih adalah model 1, yaitu ARIMA(0,0,2)
+```
+
+Berdasarkan pendugaan parameter di atas, nilai AIC terkecil dimiliki oleh model ARIMA(0,0,2) dan parameter model ARIMA(0,0,2) juga seluruhnya signifikan sehingga model yang dipilih adalah model ARIMA(0,0,2).
+
+### Analisis Sisaan
+
+Model terbaik hasil identifikasi kemudian dicek asumsi sisaannya. Sisaan model ARIMA harus memenuhi asumsi normalitas, kebebasan, dan kehomogenan ragam. Diagnostik model dilakukan secara eksplorasi dan uji formal.
+
+#### Eksplorasi Sisaan
+
+```{r}
+#Eksplorasi
+sisaan.ma2 <- model1.ma2$residuals
+par(mfrow=c(2,2))
+qqnorm(sisaan.ma2)
+qqline(sisaan.ma2, col = "blue", lwd = 2)
+plot(c(1:length(sisaan.ma2)),sisaan.ma2)
+acf(sisaan.ma2)
+pacf(sisaan.ma2)
+par(mfrow = c(1,1))
+```
+
+Berdasarkan plot kuantil-kuantil normal, secara eksplorasi ditunjukkan sisaan menyebar normal mengikuti garis $45^{\circ}$. Kemudian dapat dilihat juga lebar pita sisaan yang cenderung sama menandakan bahwa sisaan memiliki ragam yang homogen. Akan tetapi, plot ACF dan PACF sisaan ARIMA(0,0,2) signifikan pada lag ke-6 sehingga sisaan tidak saling bebas. Kondisi ini akan diuji lebih lanjut dengan uji formal.
+
+#### Uji Formal
+
+```{r}
+#1) Sisaan Menyebar Normal
+ks.test(sisaan.ma2,"pnorm") 
+#tak tolak H0 > sisaan menyebar normal
+```
+
+Selain dengan eksplorasi, asumsi tersebut dapat diuji menggunakan uji formal. Pada tahapan ini uji formal yang digunakan untuk normalitas adalah uji Kolmogorov-Smirnov (KS). Hipotesis pada uji KS adalah sebagai berikut.
+
+$H_0$ : Sisaan menyebar normal
+
+$H_1$ : Sisaan tidak menyebar normal
+
+Berdasarkan uji KS tersebut, didapat *p-value* sebesar 0.9788 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa sisaan menyebar normal. Hal ini sesuai dengan hasil eksplorasi menggunakan plot kuantil-kuantil normal.
+
+```{r}
+#2) Sisaan saling bebas/tidak ada autokorelasi
+Box.test(sisaan.ma2, type = "Ljung") 
+#tak tolak H0 > sisaan saling bebas
+```
+
+Selanjutnya akan dilakukan uji formal untuk kebebasan sisaan menggunakan uji Ljung-Box. Hipotesis yang digunakan adalah sebagai berikut.
+
+$H_0$ : Sisaan saling bebas
+
+$H_1$ : Sisaan tidak tidak saling bebas
+
+Berdasarkan uji Ljung-Box tersebut, didapat *p-value* sebesar 0.5082 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa sisaan saling bebas. Hal ini berbeda dengan eksplorasi.
+
+```{r}
+#3) Sisaan homogen
+Box.test((sisaan.ma2)^2, type = "Ljung") 
+#tak tolak H0 > sisaan homogen
+```
+
+Hipotesis yang digunakan untuk uji kehomogenan ragam adalah sebagai berikut.
+
+$H_0$ : Ragam sisaan homogen
+
+$H_1$ : Ragam sisaan tidak homogen
+
+Berdasarkan uji Ljung-Box terhadap sisaan kuadrat tersebut, didapat *p-value* sebesar 0.116 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa ragam sisaan homogen.
+
+```{r}
+#4) Nilai tengah sisaan sama dengan nol
+t.test(sisaan.ma2, mu = 0, conf.level = 0.95) 
+#tak tolak h0 > nilai tengah sisaan sama dengan 0
+```
+
+Terakhir, dengan uji-t, akan dicek apakah nilai tengah sisaan sama dengan nol. Hipotesis yang diujikan sebagai berikut.
+
+$H_0$ : nilai tengah sisaan sama dengan 0
+
+$H_1$ : nilai tengah sisaan tidak sama dengan 0
+
+Berdasarkan uji-ttersebut, didapat *p-value* sebesar 0.9594 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa nilai tengah sisaan sama dengan nol. Hal ini berbeda dengan eksplorasi.
+
+### Overfitting
+
+Tahapan selanjutnya adalah *overfitting* dilakukan dengan menaikkan orde AR(p) dan MA(q) dari model ARIMA(0,0,2) untuk melihat apakah terdapat model lain yang lebih baik dari model saat ini. Kandidat model *overfitting* adalah ARIMA(1,0,2) dan ARIMA(0,0,3).
+
+```{r}
+#---OVERFITTING---#
+model1a.ma2=Arima(ma2.train, order=c(1,0,2),method="ML")
+summary(model1a.ma2) #327.31
+lmtest::coeftest(model1a.ma2) #ar1 tidak signifikan
+
+model1b.ma2=Arima(ma2.train, order=c(0,0,3),method="ML")
+summary(model1b.ma2) #327.24
+lmtest::coeftest(model1b.ma2) #ma3 tidak signifikan
+
+#model yang dipilih adalah model awal, yaitu ARIMA(0,0,2)
+```
+
+Berdasarkan kedua model hasil *overfitting* di atas, model ARIMA(1,0,2) dan ARIMA(0,0,3) memiliki AIC yang lebih besar dibandingkan dengan model ARIMA(0,0,2) dan parameter kedua model ARIMA(1,0,2) dan ARIMA(0,0,3) tidak seluruhnya signifikan. Oleh karena itu, model ARIMA(0,0,2) akan tetap digunakan untuk melakukan peramalan.
+
+### Peramalan
+
+Peramalan dilakukan menggunakan fungsi `forecast()` . Contoh peramalan berikut ini dilakukan untuk 30 hari ke depan.
+
+```{r}
+#---FORECAST---#
+ramalan <- forecast::forecast(model1.ma2, h = 30) 
+ramalan
+data.ramalan <- ramalan$mean
+plot(ramalan)
+```
+
+Berdasarkan hasil plot ramalan di atas, dapat dilihat bahwa ramalan ARIMA(0,0,2) cenderung meningkat di awal periode dan stabil hingga akhir periode. Selanjutnya, dapat dicari nilai akurasi antara hasil ramalan dengan data uji sebagai berikut.
+
+```{r}
+perbandingan<-matrix(data=c(ma2.test, data.ramalan),
+                     nrow = 30, ncol = 2)
+colnames(perbandingan)<-c("Aktual","Hasil Forecast")
+perbandingan
+accuracy(data.ramalan, ma2.test)
+```
+
+## Data Asli
+
+Digunakan data kurs yang dalam hal ini hanya digunakan data 500 periode awal
+
+```{r}
+datakurs<-read.csv("https://raw.githubusercontent.com/rizkynurhambali/Praktikum-MPDW-2324/main/Pertemuan%2067/kurs.csv")
+datakurs <- datakurs[1:500,]
+datakurs.ts<-ts(datakurs)
+```
+
+### Eksplorasi Data
+
+#### Plot Data Penuh
+
+```{r}
+plot.ts(datakurs.ts, lty=1, xlab="waktu", ylab="Kurs", main="Plot Data Kurs")
+```
+
+Berdasarkan plot data deret waktu, terlihat bahwa data cenderung memiliki trend yang naik. Berdasarkan pola data, pembagian data latih dan data uji ditetapkan dengan proporsi 86%:14%.
+
+#### Plot Data Latih
+
+```{r}
+kurstrain<-datakurs[1:430]
+train.ts<-ts(kurstrain)
+plot.ts(train.ts, lty=1, xlab="waktu", ylab="Kurs", main="Plot Kurs Train")
+```
+
+Berdasarkan plot data deret waktu pada data latih, terlihat bahwa data cenderung memiliki trend yang naik dan cenderung tidak bergerak pada nilai tengah tertentu. Hal ini mengindikasikan bahwa data tidak stasioner dalam rataan.
+
+#### Plot Data Uji
+
+```{r}
+kurstest<-datakurs[431:500]
+test.ts<-ts(kurstest)
+plot.ts(test.ts, lty=1, xlab="waktu", ylab="Kurs", main="Plot Kurs Test")
+```
+
+### Uji Stasioneritas Data
+
+#### Plot ACF
+
+```{r}
+acf(train.ts)
+```
+
+Berdasarkan plot ACF, terlihat bahwa plot ACF data menurun secara perlahan (*tails of slowly*). Hal ini juga menjadi indikasi bahwa data tidak stasioner dalam rataan
+
+#### Uji ADF
+
+```{r}
+tseries::adf.test(train.ts)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.5553 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa data tidak stasioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF, sehingga ketidakstasioneran model kedepannya harus ditangani
+
+#### Plot Box-Cox
+
+```{r}
+index <- seq(1:430)
+bc = boxcox(train.ts~index, lambda = seq(5,10,by=1))
+#Nilai Rounded Lambda
+lambda <- bc$x[which.max(bc$y)]
+lambda
+#SK
+bc$x[bc$y > max(bc$y) - 1/2 * qchisq(.95,1)]
+```
+
+Plot Boxcox menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **6,64** dan pada selang kepercayaan 95% nilai memiliki batas bawah **0,48** dan batas atas **5,27**. Selang tersebut memuat nilai satu sehingga dapat dikatakan bahwa data bangkitan stasioner dalam ragam.
+
+### Penanganan Ketidakstasioneran Data
+
+```{r}
+train.diff<-diff(train.ts,differences = 1) 
+plot.ts(train.diff, lty=1, xlab="waktu", ylab="Data Difference 1 Kurs", main="Plot Difference Kurs")
+```
+
+Berdasarkan plot data deret waktu, terlihat bahwa data sudah stasioner dalam rataan ditandai dengan data bergerak pada nilai tengah tertentu (tidak terdapat trend ataupun musiman pada data)
+
+#### Plot ACF
+
+```{r}
+acf(train.diff)
+```
+
+Berdasarkan plot tersebut, terlihat bahwa plot ACF cuts off pada lag ke 1. Hal ini menandakan data sudah stasioner dalam rataan dan ketidakstasioneran data telah berhasil tertangani.
+
+#### Uji ADF
+
+```{r}
+tseries::adf.test(train.diff)
+```
+
+$H_0$ : Data tidak stasioner dalam rataan
+
+$H_1$ : Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil dari taraf nyata 5% sehingga tolak $H_0$ atau data stasioner dalam rataan. Hal ini sesuai dengan hasil eksplorasi menggunakan plot time series dan plot ACF, sehingga dalam hal ini ketidakstasioneran data sudah berhasil ditangani dan dapat dilanjutkan ke pemodelan
+
+### Identifikasi Model
+
+#### Plot ACF
+
+```{r}
+acf(train.diff)
+```
+
+Berdasarkan plot tersebut, terlihat bahwa plot ACF cenderung *cuts off* pada lag ke 1, sehingga jika plot PACF dianggap *tails of*, maka model tentatifnya adalah ARIMA(0,1,1).
+
+#### Plot PACF
+
+```{r}
+pacf(train.diff)
+```
+
+Berdasarkan plot tersebut, terlihat bahwa plot PACF cenderung *cuts off* pada lag ke 1, sehingga jika plot ACF dianggap *tails of*, maka model tentatifnya adalah ARIMA(1,1,0).
+
+Jika baik plot ACF maupun plot PACF keduanya dianggap tails of, maka model yang terbentuk adalah ARIMA(1,1,1)
+
+#### Plot EACF
+
+```{r}
+eacf(train.diff)
+```
+
+Identifikasi model menggunakan plot EACF dilakukan dengan melihat ujung segitiga pada pola segitiga nol. Dalam hal ini model tentatif yang terbentuk adalah ARIMA(0,1,2), ARIMA(1,1,2), ARIMA(2,1,2), dan ARIMA(3,1,2).
+
+### Pendugaan Parameter Model Tentatif
+
+#### ARIMA(0,1,1)
+
+```{r}
+model1.da=Arima(train.diff, order=c(0,1,1),method="ML")
+summary(model1.da) #AIC=4753.18
+lmtest::coeftest(model1.da) #seluruh parameter signifikan
+```
+
+#### ARIMA(1,1,0)
+
+```{r}
+model2.da=Arima(train.diff, order=c(1,1,0),method="ML")
+summary(model2.da) #AIC=4917.41
+lmtest::coeftest(model2.da) #seluruh parameter signifikan
+```
+
+#### ARIMA(1,1,1)
+
+```{r}
+model3.da=Arima(train.diff, order=c(1,1,1),method="ML")
+summary(model3.da) #AIC=4761.39
+lmtest::coeftest(model3.da) #seluruh parameter signifikan
+```
+
+#### ARIMA(0,1,2)
+
+```{r}
+model4.da=Arima(train.diff, order=c(0,1,2),method="ML")
+summary(model4.da) #AIC=4748.3
+lmtest::coeftest(model4.da) #seluruh parameter signifikan
+```
+
+#### ARIMA(1,1,2)
+
+```{r}
+model5.da=Arima(train.diff, order=c(1,1,2),method="ML")
+summary(model5.da) #AIC=4749.85 
+lmtest::coeftest(model5.da) #terdapat parameter tidak signifikan
+```
+
+#### ARIMA(2,1,2)
+
+```{r}
+model6.da=Arima(train.diff, order=c(2,1,2),method="ML")
+summary(model6.da) #AIC=4749.52
+lmtest::coeftest(model6.da) #terdapat parameter tidak signifikan
+```
+
+Berdasarkan pendugaan parameter di atas, nilai AIC terkecil dimiliki oleh model ARIMA(0,1,2) dan parameter model ARIMA(0,1,2) juga seluruhnya signifikan sehingga model yang dipilih adalah model ARIMA(0,1,2).
+
+### Analisis Sisaan
+
+Model terbaik hasil identifikasi kemudian dicek asumsi sisaannya. Sisaan model ARIMA harus memenuhi asumsi normalitas, kebebasan sisaan, dan kehomogenan ragam. Diagnostik model dilakukan secara eksplorasi dan uji formal.
+
+#### Eksplorasi Sisaan
+
+```{r}
+#Eksplorasi 
+sisaan.da <- model4.da$residuals 
+par(mfrow=c(2,2)) 
+qqnorm(sisaan.da) 
+qqline(sisaan.da, col = "blue", lwd = 2) 
+plot(c(1:length(sisaan.da)),sisaan.da) 
+acf(sisaan.da) 
+pacf(sisaan.da) 
+par(mfrow = c(1,1))
+```
+
+Berdasarkan plot kuantil-kuantil normal, secara eksplorasi ditunjukkan sisaan tidak menyebar normal ditandai dengan titik titik yang cenderung tidak mengikuti garis $45^{\circ}$. Kemudian dapat dilihat juga lebar pita sisaan yang cenderung tidak sama menandakan bahwa sisaan memiliki ragam yang heterogen. Plot ACF dan PACF sisaan ARIMA(0,0,2) juga tidak signifikan pada 20 lag awal yang menandakan saling bebas. Kondisi ini akan diuji lebih lanjut dengan uji formal.
+
+#### Uji Formal
+
+```{r}
+#1) Sisaan Menyebar Normal 
+ks.test(sisaan.da,"pnorm")  #tak tolak H0 > sisaan menyebar normal
+```
+
+Selain dengan eksplorasi, asumsi tersebut dapat diuji menggunakan uji formal. Pada tahapan ini uji formal yang digunakan untuk normalitas adalah uji Kolmogorov-Smirnov (KS). Hipotesis pada uji KS adalah sebagai berikut.
+
+$H_0$ : Sisaan menyebar normal
+
+$H_1$ : Sisaan tidak menyebar normal
+
+Berdasarkan uji KS tersebut, didapat *p-value* sebesar 0.00 yang kurang dari taraf nyata 5% sehingga tolak $H_0$ dan menandakan bahwa sisaan tidak menyebar normal. Hal ini sesuai dengan hasil eksplorasi menggunakan plot kuantil-kuantil normal.
+
+```{r}
+#2) Sisaan saling bebas/tidak ada autokorelasi 
+Box.test(sisaan.da, type = "Ljung")  #tak tolak H0 > sisaan saling bebas
+```
+
+Selanjutnya akan dilakukan uji formal untuk kebebasan sisaan menggunakan uji Ljung-Box. Hipotesis yang digunakan adalah sebagai berikut.
+
+$H_0$ : Sisaan saling bebas
+
+$H_1$ : Sisaan tidak tidak saling bebas
+
+Berdasarkan uji Ljung-Box tersebut, didapat *p-value* sebesar 0.8471 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa sisaan saling bebas. Hal ini berbeda dengan eksplorasi.
+
+```{r}
+#3) Sisaan homogen 
+Box.test((sisaan.da)^2, type = "Ljung")  #tak tolak H0 > sisaan homogen
+```
+
+Hipotesis yang digunakan untuk uji kehomogenan ragam adalah sebagai berikut.
+
+$H_0$ : Ragam sisaan homogen
+
+$H_1$ : Ragam sisaan tidak homogen
+
+Berdasarkan uji Ljung-Box terhadap sisaan kuadrat tersebut, didapat *p-value* sebesar 0.000 yang kurang dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa ragam sisaan tidak homogen.
+
+```{r}
+#4) Nilai tengah sisaan sama dengan nol 
+t.test(sisaan.da, mu = 0, conf.level = 0.95)  #tak tolak h0 > nilai tengah sisaan sama dengan 0
+```
+
+Terakhir, dengan uji-t, akan dicek apakah nilai tengah sisaan sama dengan nol. Hipotesis yang diujikan sebagai berikut.
+
+$H_0$ : nilai tengah sisaan sama dengan 0
+
+$H_1$ : nilai tengah sisaan tidak sama dengan 0
+
+Berdasarkan uji-ttersebut, didapat *p-value* sebesar 0.4866 yang lebih besar dari taraf nyata 5% sehingga tak tolak $H_0$ dan menandakan bahwa nilai tengah sisaan sama dengan nol. Hal ini berbeda dengan eksplorasi.
+
+### Peramalan
+
+Peramalan dilakukan menggunakan fungsi `forecast()` . Contoh peramalan berikut ini dilakukan untuk 30 hari ke depan.
+
+```{r}
+#---FORECAST---#
+ramalan.da <- forecast::forecast(model4.da, h = 30) 
+ramalan.da
+data.ramalan.da <- ramalan.da$mean
+plot(ramalan.da)
+```
+
+Berdasarkan hasil plot ramalan di atas, dapat dilihat bahwa ramalan ARIMA(0,012) cenderung stabil hingga akhir periode. Selanjutnya, dapat dicari nilai akurasi antara hasil ramalan dengan data uji sebagai berikut.
+
+```{r}
+pt_1 <- train.ts[430] #nilai akhir data latih
+hasil.forc.Diff <- data.ramalan.da
+hasil <- diffinv(hasil.forc.Diff, differences = 1) + pt_1
+#has.1 sama hasilnta dengan: cumsum(c(pt_1,hasil.forc.Diff))
+ts.plot(train.ts,hasil)
+```
+
+```{r}
+perbandingan.da<-matrix(data=c(head(test.ts, n=30), hasil[-1]),
+                     nrow = 30, ncol = 2)
+colnames(perbandingan.da)<-c("Aktual","Hasil Forecast")
+perbandingan.da
+accuracy(ts(hasil[-1]), head(test.ts, n=30))
+```
+
