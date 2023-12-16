@@ -1,21 +1,12 @@
 ---
 title: "Pertemuan 1 - Pemulusan"
 author:
-- "Rifqi Rustu Andana - G1401211067"
+ "Rifqi Rustu Andana - G1401211067"
 output:
   html_document: default
 ---
 
 ## Library / Packages
-
-```{r}
-install.packages("forecast")
-install.packages("graphics")
-install.packages("TTR")
-install.packages("TSA")
-install.packages("rio")
-install.packages("readxl")
-```
 
 ```{r}
 library("forecast")
@@ -28,13 +19,11 @@ library("readxl")
 
 ```{r}
 #panggil dari github 
-dataxl1 <- import("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/Data%20Tugas%201/Suhu%20Zamboanga.csv")
+dataxl1 <- rio::import("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/Tugas1/Suhu%20Zamboanga.csv")
 dataxl1
-View(dataxl1)
 ```
 
 ```{r}
-View(dataxl1)
 str(dataxl1)
 dim(dataxl1)
 ```

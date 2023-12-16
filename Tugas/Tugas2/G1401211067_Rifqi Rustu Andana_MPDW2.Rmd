@@ -9,14 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-##instalasi package
-```{r}
-install.packages("forecast")
-install.packages("TTR")
-install.packages("TSA")
-install.packages("orcutt")
-install.packages("HoRM")
-```
 ##library
 ```{r}
 library(TTR)
@@ -28,7 +20,7 @@ library(HoRM)
 
 ## Data yang digunakan adalah total emisi CO2 di negara Indonesia tahun 1889 - 2014 sebanyak 126 observasi
 ```{r}
-df <- read.csv("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/DataTugas2/Data%20CO2%20Indonesia.csv")
+df <- read.csv("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/Tugas2/Data%20CO2%20Indonesia.csv")
 df
 ```
 

@@ -1,0 +1,66 @@
+---
+title: "Tugas Pertemuan 7"
+author: "Rifqi Rustu Andana - G1401211067"
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+---
+
+### Library
+
+```{r}
+library("forecast")
+library("graphics")
+library("TTR")
+library("TSA")
+library(dplyr)
+library(forecast)
+library(lmtest) 
+library(orcutt) 
+library(HoRM) 
+library(corrplot)
+library(dLagM)
+library(dynlm)
+library(MLmetrics)
+library(ggplot2)
+library(tsibble)
+library(tseries)
+library(MASS)
+library(aTSA)
+```
+
+# Input data
+
+```{r}
+library(readxl)
+datanya <- read_excel("C:/IPB/Semester 5/MPDW/mpdw/Tugas/Tugas1/Suhu Zamboanga.xlsx")
+datanya
+```
+
+### Ubah data menjadi time series
+
+```{r}
+datanya.ts <- ts(datanya$Suhu)
+```
+
+### Membagi data menjadi data latih (80%) dan data uji (20%) dan jadikan time series
+
+```{r}
+dat.latih <- datanya[1:115,2]
+dat.uji <- datanya[116:144,2]
+dat.latih.ts <- ts(dat.latih, frequency = 12)
+dat.uji.ts <- ts(dat.uji, frequency = 12)
+```
+
+### Coba normalin dengan Tukey
+```{r}
+install.packages("TH.data")
+library(TH.data)
+library(DescTools)
+library(rcompanion)
+ <- rcompanion::transformTukey(datapsd$Size)
+```
+

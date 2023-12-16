@@ -15,20 +15,18 @@ output:
 
 ```{r, echo=FALSE}
 #PACKAGES
-install.packages("dLagM") 
-install.packages("dynlm") 
-install.packages("MLmetrics") 
 library(dLagM)
 library(dynlm)
 library(MLmetrics)
 library(lmtest)
 library(car)
+library(nardl)
 ```
 
 ## Impor Data
 
 ```{r}
-data <- rio::import("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/DataTugas3/Data%20CO2%20Indonesiaa.csv")
+data <- rio::import("https://raw.githubusercontent.com/Tuyye/mpdw/main/Tugas/Tugas3/Data%20CO2%20Indonesiaa.csv")
 str(data)
 data
 ```
@@ -64,9 +62,9 @@ Dari hasil tersebut, didapat bahwa peubah x(SolidFuel) memiliki nilai $P-Value>0
 Berikut adalah hasil peramalan y untuk 25 periode kedepan menggunakan model koyck
 
 ```{r}
-fore.koyck <- forecast(model = model.koyck, x=test$SolidFuel, h=25)
-fore.koyck
-mape.koyck <- MAPE(fore.koyck$forecasts, test$Total)
+model.koyck <- koyckDlm(x = train$SolidFuel, y = train$Total)
+summary(model.koyck)
+mape.koyck <- MAPE(model.koyck$forecasts, train$Total)
 #akurasi data training
 GoF(model.koyck)
 ```
@@ -245,8 +243,8 @@ Berdasarkan nilai MAPE, model paling optimum didapat pada Model Koyck karena mem
 ```{r}
 par(mfrow=c(1,1))
 plot(test$SolidFuel, test$Total, type="b", col="black", ylim=c(120,250))
-points(test$SolidFuel, fore.koyck$forecasts,col="red")
-lines(test$SolidFuel, fore.koyck$forecasts,col="red")
+points(test$SolidFuel, model.koyck$forecasts,col="red")
+lines(test$SolidFuel, model.koyck$forecasts,col="red")
 points(test$SolidFuel, fore.dlm$forecasts,col="blue")
 lines(test$SolidFuel, fore.dlm$forecasts,col="blue")
 points(test$SolidFuel, fore.dlm2$forecasts,col="orange")
